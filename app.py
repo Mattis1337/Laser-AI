@@ -18,9 +18,6 @@ def closest(x, values):
             continue
 
         diff = abs(value - x)   # diff is the difference of the current value to x
-        print(value)
-        print('-------')
-        print(diff)
 
         if diff < p_diff:
             closest = value
