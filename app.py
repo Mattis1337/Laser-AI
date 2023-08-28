@@ -80,38 +80,52 @@ def fen_to_bitboard(fencode):
         match fencode[i]:
             case 'K':
                 bitboard[0][field] = 1
+                field+=1
                 pass
             case 'Q':
                 bitboard[1][field] = 1
+                field += 1
                 pass
             case 'R':
                 bitboard[2][field] = 1
+                field += 1
                 pass
             case 'N':
                 bitboard[3][field] = 1
+                field += 1
                 pass
             case 'B':
                 bitboard[4][field] = 1
+                field += 1
                 pass
             case 'P':
                 bitboard[5][field] = 1
+                field += 1
                 pass
             case 'k':
                 bitboard[6][field] = 1
+                field += 1
                 pass
             case 'q':
                 bitboard[7][field] = 1
+                field += 1
                 pass
             case 'r':
                 bitboard[8][field] = 1
+                field += 1
                 pass
             case 'n':
                 bitboard[9][field] = 1
+                field += 1
                 pass
             case 'b':
                 bitboard[10][field] = 1
+                field += 1
                 pass
             case 'p':
                 bitboard[11][field] = 1
+                field += 1
                 pass
+            case _:
+                return "INVALID FENCODE"
 
