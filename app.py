@@ -53,21 +53,21 @@ def fen_to_bitboard(fencode):
     bitboard[11] : black pawn (p)
     """
 
-
-
     bitboard = np.full(shape=(12, 64), fill_value=0)
     print(bitboard[1][1])
+    field = 0
 
-    for i in range(fencode.length):
+    for i in range(len(fencode)):
+
+        # TODO: Actually test this there might be some bugs or errors but its getting late...
+
+        # field serves as a counter for the chess field one is operating
 
 
-        #TODO: Actually test this there might be some bugs or errors but its getting late...
-
-        field = 0
-
-        if fencode[i].type == int:
+        print(field)
+        if fencode[i].isdigit():
             # add the numbers of free fields to var field
-            field += fencode[i]
+            field += int(fencode[i])
             continue
 
         if fencode[i] == '/':
@@ -77,55 +77,75 @@ def fen_to_bitboard(fencode):
             # checking whether this is the end of the notation or not
             return bitboard
 
-        match fencode[i]:
-            case 'K':
+        rand = fencode[i]
+
+        match rand:
+            case "K":
                 bitboard[0][field] = 1
-                field+=1
-                pass
-            case 'Q':
+                field = field + 1
+                print("King at {}".format(field))
+            case "Q":
                 bitboard[1][field] = 1
                 field += 1
-                pass
-            case 'R':
+
+            case "R":
                 bitboard[2][field] = 1
                 field += 1
-                pass
-            case 'N':
+
+            case "N":
                 bitboard[3][field] = 1
                 field += 1
-                pass
-            case 'B':
+
+            case "B":
                 bitboard[4][field] = 1
                 field += 1
-                pass
-            case 'P':
+
+            case "P":
                 bitboard[5][field] = 1
                 field += 1
-                pass
-            case 'k':
+
+            case "k":
                 bitboard[6][field] = 1
                 field += 1
-                pass
-            case 'q':
+
+            case "q":
                 bitboard[7][field] = 1
                 field += 1
-                pass
-            case 'r':
+
+            case "r":
                 bitboard[8][field] = 1
                 field += 1
-                pass
-            case 'n':
+
+            case "n":
                 bitboard[9][field] = 1
                 field += 1
-                pass
-            case 'b':
+
+            case "b":
                 bitboard[10][field] = 1
                 field += 1
-                pass
-            case 'p':
+
+            case "p":
                 bitboard[11][field] = 1
                 field += 1
-                pass
+
             case _:
                 return "INVALID FENCODE"
+
+
+def print_bitboard(bitboard):
+    for i in range(12):
+        for j in range(64):
+            if (j % 8 == 0):
+                print('')
+
+            print(bitboard[i][j], end='')
+
+        print("")
+
+
+bitboard = fen_to_bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
+print_bitboard(bitboard)
+
+
 
