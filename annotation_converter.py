@@ -1,3 +1,8 @@
+# import libraries
+import numpy as np
+from enum import Enum
+import os
+
 def closest(x, values):
     """
     This function will return the closest value/ number to a given value
@@ -5,8 +10,6 @@ def closest(x, values):
     :param values: list of values x is to be compared to
     :return: value closest to x
     """
-
-    #TODO: This function need to be added to the actual network.
 
     for i, value in enumerate(values):
 
@@ -23,6 +26,9 @@ def closest(x, values):
 
     return closest
 
+
+# Another function determining which number is closer to a wanted value
+# in case there is for instance
 
 def fen_to_bitboard(fencode):
     """
@@ -49,18 +55,13 @@ def fen_to_bitboard(fencode):
     bitboard[11] : black pawn (p)
     """
 
+    # Initialising multidimensional array as bitboard
     bitboard = np.full(shape=(12, 64), fill_value=0)
-    print(bitboard[1][1])
+    # field serves as a counter for the chess field one is operating
     field = 0
 
     for i in range(len(fencode)):
 
-        # TODO: Actually test this there might be some bugs or errors but its getting late...
-
-        # field serves as a counter for the chess field one is operating
-
-
-        print(field)
         if fencode[i].isdigit():
             # add the numbers of free fields to var field
             field += int(fencode[i])
@@ -128,6 +129,49 @@ def fen_to_bitboard(fencode):
                 return "INVALID FENCODE"
 
 
+class field_note(Enum):
+    """
+    Enums regarding the field notations
+    """
+
+    # The notation is set from the white pov
+    # in the bitboard the white side will be the downward facing one
+    a = 0
+    b = 1
+    c = 2
+    d = 3
+    e = 4
+    f = 5
+    g = 6
+    h = 7
+
+
+
+
+def algebraic_to_bitboard(notation):
+    """
+    Function to transform the algebraic chess notation into a bitboard.
+    :param notation: string containing the notation
+    :return: a bitboard displaying the chess field according to the notation
+    """
+
+    # Initialising the bitboard
+    bitboard = np.full(shape=(12,8,8), fill_value=0)
+
+    state = 0
+    number = 0
+
+    for n in notation:
+        if state != 1:
+            if n != '1':
+                continue
+            if notation[n+1] != '.':
+                continue
+            state = 1
+
+
+
+
 def print_bitboard(bitboard):
     for i in range(12):
         for j in range(64):
@@ -139,6 +183,32 @@ def print_bitboard(bitboard):
         print("")
 
 
-bitboard = fen_to_bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
-print_bitboard(bitboard)
+######################################TESTING SITE##################################################################
+
+# TODO: This is how to check whether an argument given by the string is a field or not and if
+#   so the value of field can be used for placing the object in the matrix
+
+class field(Enum):
+    t = 0
+    b = 1
+
+string = "b"
+
+
+list = [2.5,5,8]
+for fs in field:
+    print(fs.name)
+    if string == fs.name:
+        print(list[fs.value])
+
+
+
+# TODO: Need to implement this when the actual files start appearing X)
+
+fi = open("app.py", "r")
+print(fi.read())
+
+notation = fi.read()
+
+print(notation)
