@@ -145,31 +145,39 @@ class field_note(Enum):
     g = 6
     h = 7
 
-
-
+# TODO: required string notation needs to only contain the moves not any of the pre moves information. 
 
 def algebraic_to_bitboard(notation):
     """
     Function to transform the algebraic chess notation into a bitboard.
-    :param notation: string containing the notation
+    :param notation: string containing the notation. 
     :return: a bitboard displaying the chess field according to the notation
     """
 
     # Initialising the bitboard
     bitboard = np.full(shape=(12,8,8), fill_value=0)
+    
+    color = None # which colors move it is right now
 
-    state = 0
-    number = 0
+    for i, n in enumerate(notation):
+        if !(n.isdigit()):
+            continue    
+        if notation[i+1] != '.':
+            continue
+        for j in field_note:
+            if j.name == notation[i+3]:
+                working = 1
+        if working == 1:
+            # It is sure now that the looked up piece is a pawn
 
-    for n in notation:
-        if state != 1:
-            if n != '1':
-                continue
-            if notation[n+1] != '.':
-                continue
-            state = 1
+def Bitboard_add_piece(side = None, pic = None, col = None, row = None, bitboard = None):
+    if side == 1:
+        # black
 
-
+    if side == 0:
+        # white
+    
+    
 
 
 def print_bitboard(bitboard):
