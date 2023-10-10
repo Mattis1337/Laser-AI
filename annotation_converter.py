@@ -145,6 +145,10 @@ class field_note(Enum):
     g = 6
     h = 7
 
+
+# A list of all short forms of chess piece notations.
+pieces = ['B', 'N', 'R', 'Q', 'K']
+
 # TODO: required string notation needs to only contain the moves not any of the pre moves information. 
 
 def algebraic_to_bitboard(notation):
@@ -158,10 +162,27 @@ def algebraic_to_bitboard(notation):
     bitboard = np.full(shape=(12,8,8), fill_value=0)
     
     color = None # which colors move it is right now
+    state = 0
 
     for i, n in enumerate(notation):
-        if !(n.isdigit()):
-            continue    
+        # Firstly we chech wether the following text is actually already part of the game or not
+        if state != 1:
+            if not (n == '1' & notation[i+1] == '.' & notation[i+2] == ' '):
+                continue
+            for j in field_note:
+                if notation[i+3] == 'N':
+                    if notation[i+4] == j.name:
+                        if notation[i+5].isnumeric:
+                            state = 1
+
+                if notation[i+3] == j.name:
+                    if notation[i+4].isnumeric:
+                        state = 1
+
+        try:
+            int(n)
+        except ValueError:
+            continue
         if notation[i+1] != '.':
             continue
         for j in field_note:
@@ -169,18 +190,20 @@ def algebraic_to_bitboard(notation):
                 working = 1
         if working == 1:
             # It is sure now that the looked up piece is a pawn
+            continue
 
-def Bitboard_add_piece(side = None, pic = None, col = None, row = None, bitboard = None):
+
+def bitboard_add_piece(side = None, pic = None, col = None, row = None, bitboard = None):
     if side == 1:
         # black
+        return
 
     if side == 0:
         # white
-    
-    
+        return
 
 
-def print_bitboard(bitboard):
+def print_bitboard_fen(bitboard):
     for i in range(12):
         for j in range(64):
             if (j % 8 == 0):
@@ -188,9 +211,15 @@ def print_bitboard(bitboard):
 
             print(bitboard[i][j], end='')
 
-        print("")
+        print('')
 
-
+def print_bitboard_alg(bitboard):
+    for i in range(12):
+        for j in range(8):
+            for k in range(8):
+                print(bitboard[i][j][k], end='')
+            print('')
+        print('')
 
 ######################################TESTING SITE##################################################################
 
@@ -220,3 +249,13 @@ print(fi.read())
 notation = fi.read()
 
 print(notation)
+
+val = '1'
+
+for j in field:
+    if val.lower == j:
+        print(j)
+
+for i in field:
+    print(i)
+
