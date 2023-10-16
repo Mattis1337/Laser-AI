@@ -1,7 +1,11 @@
 # import libraries
+
+# calculations
 import numpy as np
-from enum import Enum
-import os
+
+# pgn converter
+import chess
+import chess.pgn
 
 def closest(x, values):
     """
@@ -62,145 +66,92 @@ def fen_to_bitboard(fencode):
 
     for i in range(len(fencode)):
 
-        if fencode[i].isdigit():
-            # add the numbers of free fields to var field
-            field += int(fencode[i])
+        n = fencode[i]
+
+        if n.isdigit():
+            field += int(n)
             continue
 
-        if fencode[i] == '/':
+        if n == '/':
             continue
 
-        if fencode[i] == ' ':
+        if n == ' ':
             # checking whether this is the end of the notation or not
             return bitboard
 
-        rand = fencode[i]
-
-        match rand:
-            case "K":
+        match n:
+            case 'K':
                 bitboard[0][field] = 1
-                field = field + 1
-                print("King at {}".format(field))
-            case "Q":
+                field += 1
+
+            case 'Q':
                 bitboard[1][field] = 1
                 field += 1
 
-            case "R":
+            case 'R':
                 bitboard[2][field] = 1
                 field += 1
 
-            case "N":
+            case 'N':
                 bitboard[3][field] = 1
                 field += 1
 
-            case "B":
+            case 'B':
                 bitboard[4][field] = 1
                 field += 1
 
-            case "P":
+            case 'P':
                 bitboard[5][field] = 1
                 field += 1
 
-            case "k":
+            case 'k':
                 bitboard[6][field] = 1
                 field += 1
 
-            case "q":
+            case 'q':
                 bitboard[7][field] = 1
                 field += 1
 
-            case "r":
+            case 'r':
                 bitboard[8][field] = 1
                 field += 1
 
-            case "n":
+            case 'n':
                 bitboard[9][field] = 1
                 field += 1
 
-            case "b":
+            case 'b':
                 bitboard[10][field] = 1
                 field += 1
 
-            case "p":
+            case 'p':
                 bitboard[11][field] = 1
                 field += 1
 
             case _:
                 return "INVALID FENCODE"
 
+    return bitboard
 
-class field_note(Enum):
-    """
-    Enums regarding the field notations
-    """
-
-    # The notation is set from the white pov
-    # in the bitboard the white side will be the downward facing one
-    a = 0
-    b = 1
-    c = 2
-    d = 3
-    e = 4
-    f = 5
-    g = 6
-    h = 7
-
-
-# A list of all short forms of chess piece notations.
-pieces = ['B', 'N', 'R', 'Q', 'K']
-
-# TODO: required string notation needs to only contain the moves not any of the pre moves information. 
-
-def algebraic_to_bitboard(notation):
+def pgn_to_bitboard(file):
     """
     Function to transform the algebraic chess notation into a bitboard.
-    :param notation: string containing the notation. 
+    :param file: the file containing the notation
     :return: a bitboard displaying the chess field according to the notation
     """
 
-    # Initialising the bitboard
-    bitboard = np.full(shape=(12,8,8), fill_value=0)
-    
-    color = None # which colors move it is right now
-    state = 0
+    game = chess.pgn.read_game(file)
 
-    for i, n in enumerate(notation):
-        # Firstly we chech wether the following text is actually already part of the game or not
-        if state != 1:
-            if not (n == '1' & notation[i+1] == '.' & notation[i+2] == ' '):
-                continue
-            for j in field_note:
-                if notation[i+3] == 'N':
-                    if notation[i+4] == j.name:
-                        if notation[i+5].isnumeric:
-                            state = 1
+    # function will have to receive:
+    # game; must be a variable containing the whole game like presented above
+    board = game.board()
+    all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
 
-                if notation[i+3] == j.name:
-                    if notation[i+4].isnumeric:
-                        state = 1
+    for move in game.mainline_moves():
+        board.push(move)
+        all_moves.append(fen_to_bitboard(board.fen()))
 
-        try:
-            int(n)
-        except ValueError:
-            continue
-        if notation[i+1] != '.':
-            continue
-        for j in field_note:
-            if j.name == notation[i+3]:
-                working = 1
-        if working == 1:
-            # It is sure now that the looked up piece is a pawn
-            continue
-
-
-def bitboard_add_piece(side = None, pic = None, col = None, row = None, bitboard = None):
-    if side == 1:
-        # black
-        return
-
-    if side == 0:
-        # white
-        return
+    return all_moves
 
 
 def print_bitboard_fen(bitboard):
@@ -212,50 +163,3 @@ def print_bitboard_fen(bitboard):
             print(bitboard[i][j], end='')
 
         print('')
-
-def print_bitboard_alg(bitboard):
-    for i in range(12):
-        for j in range(8):
-            for k in range(8):
-                print(bitboard[i][j][k], end='')
-            print('')
-        print('')
-
-######################################TESTING SITE##################################################################
-
-# TODO: This is how to check whether an argument given by the string is a field or not and if
-#   so the value of field can be used for placing the object in the matrix
-
-class field(Enum):
-    t = 0
-    b = 1
-
-string = "b"
-
-
-list = [2.5,5,8]
-for fs in field:
-    print(fs.name)
-    if string == fs.name:
-        print(list[fs.value])
-
-
-
-# TODO: Need to implement this when the actual files start appearing X)
-
-fi = open("app.py", "r")
-print(fi.read())
-
-notation = fi.read()
-
-print(notation)
-
-val = '1'
-
-for j in field:
-    if val.lower == j:
-        print(j)
-
-for i in field:
-    print(i)
-
