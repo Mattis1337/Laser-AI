@@ -2,9 +2,9 @@
 import numpy as np
 
 # importing own files
-import annotation_converter 
+from annotation_converter import *
 import train_model
 
-print("Laser-AI")
 
+print("Laser-AI")
 

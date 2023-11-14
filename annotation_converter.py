@@ -1,27 +1,11 @@
-def closest(x, values):
-    """
-    This function will return the closest value/ number to a given value
-    :param x: (random) value that is to be inspected
-    :param values: list of values x is to be compared to
-    :return: value closest to x
-    """
+# import libraries
 
-    #TODO: This function need to be added to the actual network.
+# calculations
+import numpy as np
 
-    for i, value in enumerate(values):
-
-        if i == 0:
-            closest = value
-            p_diff = abs(value-x)   # p_diff is the closest difference measured yet
-            continue
-
-        diff = abs(value - x)   # diff is the difference of the current value to x
-
-        if diff < p_diff:
-            closest = value
-            p_diff = diff
-
-    return closest
+# pgn converter
+import chess
+import chess.pgn
 
 
 def fen_to_bitboard(fencode):
@@ -49,86 +33,102 @@ def fen_to_bitboard(fencode):
     bitboard[11] : black pawn (p)
     """
 
+    # Initialising multidimensional array as bitboard
     bitboard = np.full(shape=(12, 64), fill_value=0)
-    print(bitboard[1][1])
+    # field serves as a counter for the chess field one is operating
     field = 0
 
     for i in range(len(fencode)):
 
-        # TODO: Actually test this there might be some bugs or errors but its getting late...
+        n = fencode[i]
 
-        # field serves as a counter for the chess field one is operating
-
-
-        print(field)
-        if fencode[i].isdigit():
-            # add the numbers of free fields to var field
-            field += int(fencode[i])
+        if n.isdigit():
+            field += int(n)
             continue
 
-        if fencode[i] == '/':
+        if n == '/':
             continue
 
-        if fencode[i] == ' ':
+        if n == ' ':
             # checking whether this is the end of the notation or not
             return bitboard
 
-        rand = fencode[i]
-
-        match rand:
-            case "K":
+        match n:
+            case 'K':
                 bitboard[0][field] = 1
-                field = field + 1
-                print("King at {}".format(field))
-            case "Q":
+                field += 1
+
+            case 'Q':
                 bitboard[1][field] = 1
                 field += 1
 
-            case "R":
+            case 'R':
                 bitboard[2][field] = 1
                 field += 1
 
-            case "N":
+            case 'N':
                 bitboard[3][field] = 1
                 field += 1
 
-            case "B":
+            case 'B':
                 bitboard[4][field] = 1
                 field += 1
 
-            case "P":
+            case 'P':
                 bitboard[5][field] = 1
                 field += 1
 
-            case "k":
+            case 'k':
                 bitboard[6][field] = 1
                 field += 1
 
-            case "q":
+            case 'q':
                 bitboard[7][field] = 1
                 field += 1
 
-            case "r":
+            case 'r':
                 bitboard[8][field] = 1
                 field += 1
 
-            case "n":
+            case 'n':
                 bitboard[9][field] = 1
                 field += 1
 
-            case "b":
+            case 'b':
                 bitboard[10][field] = 1
                 field += 1
 
-            case "p":
+            case 'p':
                 bitboard[11][field] = 1
                 field += 1
 
             case _:
                 return "INVALID FENCODE"
 
+    return bitboard
 
-def print_bitboard(bitboard):
+def pgn_to_bitboard(file):
+    """
+    Function to transform the algebraic chess notation into a bitboard.
+    :param file: the file containing the notation
+    :return: a bitboard displaying the chess field according to the notation
+    """
+
+    game = chess.pgn.read_game(file)
+
+    # function will have to receive:
+    # game; must be a variable containing the whole game like presented above (from chess library)
+    board = game.board()
+    all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
+
+    for move in game.mainline_moves():
+        board.push(move)
+        all_moves.append(fen_to_bitboard(board.fen()))
+
+    return all_moves
+
+
+def print_bitboard_fen(bitboard):
     for i in range(12):
         for j in range(64):
             if (j % 8 == 0):
@@ -136,9 +136,4 @@ def print_bitboard(bitboard):
 
             print(bitboard[i][j], end='')
 
-        print("")
-
-
-bitboard = fen_to_bitboard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-print_bitboard(bitboard)
+        print('')
