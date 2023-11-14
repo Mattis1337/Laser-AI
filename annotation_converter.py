@@ -7,32 +7,6 @@ import numpy as np
 import chess
 import chess.pgn
 
-def closest(x, values):
-    """
-    This function will return the closest value/ number to a given value
-    :param x: (random) value that is to be inspected
-    :param values: list of values x is to be compared to
-    :return: value closest to x
-    """
-
-    for i, value in enumerate(values):
-
-        if i == 0:
-            closest = value
-            p_diff = abs(value-x)   # p_diff is the closest difference measured yet
-            continue
-
-        diff = abs(value - x)   # diff is the difference of the current value to x
-
-        if diff < p_diff:
-            closest = value
-            p_diff = diff
-
-    return closest
-
-
-# Another function determining which number is closer to a wanted value
-# in case there is for instance
 
 def fen_to_bitboard(fencode):
     """
@@ -143,7 +117,7 @@ def pgn_to_bitboard(file):
     game = chess.pgn.read_game(file)
 
     # function will have to receive:
-    # game; must be a variable containing the whole game like presented above
+    # game; must be a variable containing the whole game like presented above (from chess library)
     board = game.board()
     all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
 
