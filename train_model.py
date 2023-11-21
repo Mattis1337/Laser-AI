@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
+import os
+
 
 # Download training data from open datasets.
 training_data = datasets.FashionMNIST(
@@ -123,18 +125,12 @@ model.load_state_dict(torch.load("model.pth"))
 # TODO: possible outputs aka classes needs to be variable meaning
 #  it needs to be assigned when assigning the input
 #  Example: Input: Move 12 Output: Move 13
-classes = [
-    "T-shirt/top",
-    "Trouser",
-    "Pullover",
-    "Dress",
-    "Coat",
-    "Sandal",
-    "Shirt",
-    "Sneaker",
-    "Bag",
-    "Ankle boot",
-]
+classes = []
+path = NULL # Your personal path to files has to be added
+directories = os.listdir(path)
+
+for file in directories:
+    
 
 model.eval()
 x, y = test_data[0][0], test_data[0][1]
