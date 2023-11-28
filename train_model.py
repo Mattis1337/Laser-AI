@@ -6,8 +6,8 @@ from torchvision.transforms import ToTensor
 
 import os
 
-
-# Download training data from open datasets.
+# Getting training data:
+#TODO: Look at torch's way to prepare training data
 training_data = datasets.FashionMNIST(
     root="data",
     train=True,
@@ -15,7 +15,8 @@ training_data = datasets.FashionMNIST(
     transform=ToTensor(),
 )
 
-# Download test data from open datasets.
+# Getting data for testing
+#TODO: Redundant ? instead pick random examples from training_data
 test_data = datasets.FashionMNIST(
     root="data",
     train=False,
@@ -23,13 +24,14 @@ test_data = datasets.FashionMNIST(
     transform=ToTensor(),
 )
 
-# TODO: Adjust Batch size to the size aka length of a chess game
+# TODO: DataLoaders are created before training -> Batch size needs to be a big number and if there is no next move then break;
 batch_size = 64
 
 # Create data loaders.
 train_dataloader = DataLoader(training_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
+#TODO: Find out whatever this does
 for X, y in test_dataloader:
     print(f"Shape of X [N, C, H, W]: {X.shape}")
     print(f"Shape of y: {y.shape} {y.dtype}")
@@ -122,10 +124,10 @@ print("Saved PyTorch Model State to model.pth")
 model = NeuralNetwork().to(device)
 model.load_state_dict(torch.load("model.pth"))
 
-# TODO: possible outputs aka classes needs to be variable meaning
-#  it needs to be assigned when assigning the input
-#  Example: Input: Move 12 Output: Move 13
-classes = []
+# TODO: Create doc which will automatically assign all classes
+# do so by iterating once through all games to get every possible move
+classes = [] # use readlines() to iterate through all lines and all variation
+
 path = NULL # Your personal path to files has to be added
 directories = os.listdir(path)
 
