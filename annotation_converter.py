@@ -1,5 +1,8 @@
 # import libraries
 
+# TODO: temp
+import os
+
 # calculations
 import numpy as np
 
@@ -137,3 +140,25 @@ def print_bitboard_fen(bitboard):
             print(bitboard[i][j], end='')
 
         print('')
+
+# TODO: Function which creates a file containing all possible moves
+
+# Your personal path to files has to be added
+path_p = None # Path to personal files
+path_f = None # Path to the folder containing all the games
+directories = os.listdir(path_f)
+
+with open(path_p, 'w') as f:
+
+    for file in directories:
+        game = chess.pgn.read_game(file) # Opens current game from databank
+        board = chess.Board(chess.STARTING_BOARD_FEN) # Creates board all moves will be pushed from
+
+        for move in game.mainline_moves(): # Add move to board to get diff situation
+            board.push(move)
+
+            for c in board.legal_moves: # Generates all legal moves to iterate through and then add to the list
+
+                for line in f:
+                    if (c != line):
+                        f.write(c)
