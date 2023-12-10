@@ -128,12 +128,14 @@ model.load_state_dict(torch.load("model.pth"))
 # do so by iterating once through all games to get every possible move
 classes = [] # use readlines() to iterate through all lines and all variation
 
-path = None # Your personal path to files has to be added
-directories = os.listdir(path)
+path = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt' # Personal path to the file with all moves
 
-# TODO: Iterate through the file containing all moves
-for file in directories:
+# TODO: Test if iteration works
+with open(path, 'r') as f:
+    lines = f.readlines()
 
+for line in lines:
+    classes.append(line)
 
 model.eval()
 x, y = test_data[0][0], test_data[0][1]

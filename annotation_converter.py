@@ -144,21 +144,34 @@ def print_bitboard_fen(bitboard):
 # TODO: Function which creates a file containing all possible moves
 
 # Your personal path to files has to be added
-path_p = None # Path to personal files
-path_f = None # Path to the folder containing all the games
+path_p = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt' # Path to personal files
+path_f = 'C:/Users/frank\OneDrive\Desktop\chess_game' # Path to the folder containing all the games
 directories = os.listdir(path_f)
 
-with open(path_p, 'w') as f:
+for file in directories:
+    f_current = open(path_f + '/' + file, 'r')
+    game = chess.pgn.read_game(f_current) # Opens current game from databank
+    board = chess.Board(chess.STARTING_BOARD_FEN) # Creates board all moves will be pushed from
 
-    for file in directories:
-        game = chess.pgn.read_game(file) # Opens current game from databank
-        board = chess.Board(chess.STARTING_BOARD_FEN) # Creates board all moves will be pushed from
+    for move in game.mainline_moves(): # Add move to board to get diff situation
+        board.push(move)
 
-        for move in game.mainline_moves(): # Add move to board to get diff situation
-            board.push(move)
+        legal_moves_lst = [
+            board.san(move)
+            for move in board.legal_moves
+        ]
 
-            for c in board.legal_moves: # Generates all legal moves to iterate through and then add to the list
+        with open(path_p, 'r+') as f_moves:
+            lines = f_moves.readlines()
 
-                for line in f:
-                    if (c != line):
-                        f.write(c)
+            print()
+
+            # TODO: Fix comparison
+            #  problem is the linebreak '\n' get rid of that
+
+            #for line in lines:
+                #for p_move in legal_moves_lst:
+                    #print(p_move)
+                    #print(line)
+                    #if p_move != line:
+                         #f_moves.write(p_move + '\n')
