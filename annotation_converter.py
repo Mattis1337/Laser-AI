@@ -1,5 +1,5 @@
 # import libraries
-
+import io
 # TODO: temp
 import os
 
@@ -110,6 +110,7 @@ def fen_to_bitboard(fencode):
 
     return bitboard
 
+
 def pgn_to_bitboard(file):
     """
     Function to transform the algebraic chess notation into a bitboard.
@@ -141,37 +142,42 @@ def print_bitboard_fen(bitboard):
 
         print('')
 
-# TODO: Function which creates a file containing all possible moves
 
-# Your personal path to files has to be added
-path_p = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt' # Path to personal files
-path_f = 'C:/Users/frank\OneDrive\Desktop\chess_game' # Path to the folder containing all the games
-directories = os.listdir(path_f)
+# Filters move notation for '\n'
+def move_filter(move):
+    return str.strip(move)
 
-for file in directories:
-    f_current = open(path_f + '/' + file, 'r')
-    game = chess.pgn.read_game(f_current) # Opens current game from databank
-    board = chess.Board(chess.STARTING_BOARD_FEN) # Creates board all moves will be pushed from
 
-    for move in game.mainline_moves(): # Add move to board to get diff situation
-        board.push(move)
+# Scans the file while dealing with the increasing amount of lines there are
+def scan_file(path, p_move):
+    with open(path, 'r+') as file:
+        lines = file.readlines()
+        for line in lines:
+            if p_move == move_filter(line):
+                return
 
-        legal_moves_lst = [
-            board.san(move)
-            for move in board.legal_moves
-        ]
+        print(p_move)
+        print(move_filter(line))
+        file.write(p_move + '\n')
 
-        with open(path_p, 'r+') as f_moves:
-            lines = f_moves.readlines()
 
-            print()
+def create_outputs():
+    path_p = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt'  # Path to personal file containing all moves
+    path_f = 'C:/Users/frank\OneDrive\Desktop\chess_game'  # Path to the folder containing all the games
+    directories = os.listdir(path_f)
 
-            # TODO: Fix comparison
-            #  problem is the linebreak '\n' get rid of that
+    for file in directories:
+        f_current = open(path_f + '/' + file, 'r')
+        game = chess.pgn.read_game(f_current)  # Opens current game from databank
+        board = chess.Board(chess.STARTING_BOARD_FEN)  # Creates board all moves will be pushed from
 
-            #for line in lines:
-                #for p_move in legal_moves_lst:
-                    #print(p_move)
-                    #print(line)
-                    #if p_move != line:
-                         #f_moves.write(p_move + '\n')
+        for move in game.mainline_moves():  # Add move to board to get diff situation
+            board.push(move)
+
+            legal_moves_lst = [
+                board.san(move)
+                for move in board.legal_moves
+            ]
+
+            for p_move in legal_moves_lst:
+                scan_file(path_p, p_move)
