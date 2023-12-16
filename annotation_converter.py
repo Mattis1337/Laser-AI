@@ -1,6 +1,4 @@
 # import libraries
-import io
-# TODO: temp
 import os
 
 # calculations

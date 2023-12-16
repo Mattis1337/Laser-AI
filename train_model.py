@@ -4,10 +4,10 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
-import os
+import annotation_converter
 
 # Getting training data:
-#TODO: Look at torch's way to prepare training data
+# TODO: Look at torch's way to prepare training data
 training_data = datasets.FashionMNIST(
     root="data",
     train=True,
@@ -16,7 +16,7 @@ training_data = datasets.FashionMNIST(
 )
 
 # Getting data for testing
-#TODO: Redundant ? instead pick random examples from training_data
+# TODO: Redundant ? instead pick random examples from training_data
 test_data = datasets.FashionMNIST(
     root="data",
     train=False,
@@ -24,14 +24,15 @@ test_data = datasets.FashionMNIST(
     transform=ToTensor(),
 )
 
-# TODO: DataLoaders are created before training -> Batch size needs to be a big number and if there is no next move then break;
+# TODO: DataLoaders are created before training -> Batch size needs to be a big number and if there is no next move
+#  then break
 batch_size = 64
 
 # Create data loaders.
 train_dataloader = DataLoader(training_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
-#TODO: Find out whatever this does
+# TODO: Find out whatever this does
 for X, y in test_dataloader:
     print(f"Shape of X [N, C, H, W]: {X.shape}")
     print(f"Shape of y: {y.shape} {y.dtype}")
@@ -124,18 +125,14 @@ print("Saved PyTorch Model State to model.pth")
 model = NeuralNetwork().to(device)
 model.load_state_dict(torch.load("model.pth"))
 
-# TODO: Create doc which will automatically assign all classes
-# do so by iterating once through all games to get every possible move
-classes = [] # use readlines() to iterate through all lines and all variation
+classes = []  # Saves all possible outputs for the nn
 
-path = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt' # Personal path to the file with all moves
+path = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt'  # Personal path to the file with all moves
 
-# TODO: Test if iteration works
 with open(path, 'r') as f:
     lines = f.readlines()
-
-for line in lines:
-    classes.append(line)
+    for line in lines:
+        classes.append(annotation_converter.move_filter(line))
 
 model.eval()
 x, y = test_data[0][0], test_data[0][1]
