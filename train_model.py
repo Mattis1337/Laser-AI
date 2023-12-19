@@ -5,6 +5,7 @@ from torchvision import datasets
 from torchvision.transforms import ToTensor
 
 import annotation_converter
+import atexit
 
 # Getting training data:
 # TODO: Look at torch's way to prepare training data
@@ -141,3 +142,11 @@ with torch.no_grad():
     pred = model(x)
     predicted, actual = classes[pred[0].argmax(0)], classes[y]
     print(f'Predicted: "{predicted}", Actual: "{actual}"')
+
+
+def exit_handler():
+    torch.save(model.state_dict(), "model.pth")
+    print("Saved PyTorch Model State to model.pth")
+
+
+atexit.register(exit_handler)
