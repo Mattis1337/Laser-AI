@@ -1,53 +1,38 @@
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options as SeleniumOptions
-from selenium.webdriver.common.by import By
+import requests
+import json
+
+# Chess.com returns HTML instead of JSON if useragent isn't Postman
+json_header = {
+        'accept': 'application/json',
+        'User-Agent': 'PostmanRuntime/10.16.0',
+}
 
 
-def setup_driver():
-    # starts browser
-    browser = webdriver.Firefox(options=configure_driver())
-    browser.get('https://www.chess.com/games')
-    # print(driver.page_source)
-    return browser
+def get_archives(username):
+    # creates the player's game archive URL
+    url = f"https://api.chess.com/pub/player/{username}/games/archives"
+    # downloads JSON as string
+    archives = requests.get(url=url, headers=json_header).json()   # converts text to JSON
+    return archives
 
 
-def configure_driver():
-    options = SeleniumOptions()
-    options.set_preference("browser.download.folderList", 2)
-    options.set_preference("browser.download.manager.showWhenStarting", False)
-    options.set_preference("browser.download.dir", "./games")
-    # options.headless = True
-    # options.add_argument("--window-size=1920,1200")
-    return options
+def get_games(username):
+    archives = get_archives(username=username)
+    for archive in archives["archives"]:
+        games = requests.get(url=archive, headers=json_header).json()
 
 
-def iterate_players():
-    page = 1
-    players = driver.find_elements(By.CLASS_NAME, "post-preview-title")     # gets all player profiles
-    while len(players) > 0:
-        for player in players:
-            iterate_games(player)
-        page += 1
-        driver.get("https://www.chess.com/games?page=" + str(page))
-        players = driver.find_elements(By.CLASS_NAME, "post-preview-title")
+def save_game(game_pgn):
+    print("TODO")
+    # get player's archives
+    # get pgn
+    # save pgn
 
 
-def iterate_games(player):
-    player_name = player.text.title()
-    page = 1
-    player.click()
-
-    while driver.find_element(By.ID, "master-games-container") is not None:
-        download_games()
-        page += 1
-        driver.get("https://www.chess.com/games/search?p1=" + player_name + "&page=" + str(page))
+def save_games(username):
+    get_games(get_archives(username))
 
 
-def download_games():
-    driver.find_element(By.ID, "master-games-check-all").click()
-    driver.find_element(By.CLASS_NAME, "master-games-download-button").click()
 
-
-driver = setup_driver()
-iterate_players()
-# driver.quit()
+get_games("Samuel")
+# save_game("Samuel")
