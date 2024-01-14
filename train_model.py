@@ -4,40 +4,62 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
-import annotation_converter
+from annotation_converter import create_input_datasets
+from data_preparer import WhiteMovesDataset, BlackMovesDataset
 import atexit
 
+# TODO: If everything starts working maybe refactor the way this file is structured 
+#  meaning to create functions for training either the black moves neural network or the white moves neural network
+
+#####INITIALISING THE DATA#####
+
+# Initialising the data
+create_input_datasets() 
+
+path_white_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
+path_white_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels'
+path_black_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img'
+path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
+
 # Getting training data:
-# TODO: Look at torch's way to prepare training data
-training_data = datasets.FashionMNIST(
-    root="data",
-    train=True,
-    download=True,
-    transform=ToTensor(),
-)
+training_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
+training_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
 
 # Getting data for testing
-# TODO: Redundant ? instead pick random examples from training_data
-test_data = datasets.FashionMNIST(
-    root="data",
-    train=False,
-    download=True,
-    transform=ToTensor(),
-)
+test_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
+test_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
+
 
 # TODO: DataLoaders are created before training -> Batch size needs to be a big number and if there is no next move
 #  then break
-batch_size = 64
 
-# Create data loaders.
-train_dataloader = DataLoader(training_data, batch_size=batch_size)
-test_dataloader = DataLoader(test_data, batch_size=batch_size)
+def batch_length(path):
+    with open(path, 'r') as file:
+        lines = file.readlines()
+        length = 0
+        print(lines)
+        for num in lines:
+            print(num)
+            length+=1
+    
+    print(length)
+    return length
 
-# TODO: Find out whatever this does
-for X, y in test_dataloader:
-    print(f"Shape of X [N, C, H, W]: {X.shape}")
-    print(f"Shape of y: {y.shape} {y.dtype}")
-    break
+batch_size_white = batch_length(path_white_img)
+batch_size_black = batch_length(path_black_img)
+
+# Create data loaders white
+train_dataloader_white = DataLoader(training_data_white, batch_size=batch_size_white)
+test_dataloader_white = DataLoader(test_data_white, batch_size=batch_size_white)
+# Create data loaders black
+train_dataloader_black = DataLoader(training_data_black, batch_size=batch_size_black)
+test_dataloader_black = DataLoader(test_data_black, batch_size=batch_size_black)
+
+# TODO: Maybe implement maybe get rid of this
+#for X, y in test_dataloader:
+#   print(f"Shape of X [N, C, H, W]: {X.shape}")
+#    print(f"Shape of y: {y.shape} {y.dtype}")
+#    break
 
 # Get cpu, gpu or mps device for training.
 device = (
@@ -50,7 +72,8 @@ device = (
 print(f"Using {device} device")
 
 
-# Define model
+
+# Neural Network class
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
@@ -69,11 +92,15 @@ class NeuralNetwork(nn.Module):
         return logits
 
 
-model = NeuralNetwork().to(device)
-print(model)
+model_white = NeuralNetwork().to(device)
+print(model_white)
+
+model_black = NeuralNetwork().to(device)
+print(model_black)
 
 loss_fn = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+optimizer_white = torch.optim.SGD(model_white.parameters(), lr=1e-3)
+optimizer_black = torch.optim.SGD(model_black.parameters(), lr=1e-3)
 
 
 def train(dataloader, model, loss_fn, optimizer):
@@ -116,37 +143,62 @@ def test(dataloader, model, loss_fn):
 epochs = 5
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
+    # White
+    train(train_dataloader_white, model_white, loss_fn, optimizer_white)
+    test(test_dataloader_white, model_white, loss_fn)
+    # Black
+    train(train_dataloader_black, model_black, loss_fn, optimizer_black)
+    test(test_dataloader_black, model_black, loss_fn)
 print("Done!")
 
-torch.save(model.state_dict(), "model.pth")
-print("Saved PyTorch Model State to model.pth")
+#####SAVING MODELS#####
 
-model = NeuralNetwork().to(device)
-model.load_state_dict(torch.load("model.pth"))
+torch.save(model_white.state_dict(), "model_white.pth")
+print("Saved PyTorch White Model State to model_white.pth")
+
+torch.save(model_white.state_dict(), "model_white.pth")
+print("Saved PyTorch White Model State to model_white.pth")
+
+#####LOADING MODELS#####
+
+model_white = NeuralNetwork().to(device)
+model_white.load_state_dict(torch.load("model_white.pth"))
+
+model_black = NeuralNetwork().to(device)
+model_black.load_state_dict(torch.load("model_black.pth"))
+
 
 classes = []  # Saves all possible outputs for the nn
 
-path = 'C:/Users/frank\OneDrive\Desktop/allMoves.txt'  # Personal path to the file with all moves
+path = '~/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Personal path to the file with all moves
 
 with open(path, 'r') as f:
     lines = f.readlines()
     for line in lines:
         classes.append(annotation_converter.move_filter(line))
 
-model.eval()
-x, y = test_data[0][0], test_data[0][1]
+model_white.eval()
+x, y = test_data_white[0][0], test_data_white[0][1]
 with torch.no_grad():
     x = x.to(device)
-    pred = model(x)
+    pred = model_white(x)
     predicted, actual = classes[pred[0].argmax(0)], classes[y]
     print(f'Predicted: "{predicted}", Actual: "{actual}"')
 
+model_black.eval()
+x, y = test_data_black[0][0], test_data_black[0][1]
+with torch.no_grad():
+    x = x.to(device)
+    pred = model_black(x)
+    predicted, actual = classes[pred[0].argmax(0)], classes[y]
+    print(f'Predicted: "{predicted}", Actual: "{actual}"')
 
+# TODO: Figure out file where the state is saved
 def exit_handler():
-    torch.save(model.state_dict(), "model.pth")
-    print("Saved PyTorch Model State to model.pth")
+    torch.save(model_white.state_dict(), "model_white.pth")
+    print("Saved PyTorch White Model State to model.pth")
+    torch.save(model_black.state_dict(), "model_black.pth")
+    print("Saved PyTorch White Model State to model.pth")
 
 
 atexit.register(exit_handler)
