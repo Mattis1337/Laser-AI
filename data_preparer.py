@@ -1,15 +1,13 @@
 import os
-import pandas as pd
-from torchvision.io import read_image
 
-# TODO: Find out what the custom Dataset is inheriting from and what output getitem fn has
+from torch.utils.data import Dataset
 
-# TODO: Convert all games from Dataset to bitboards in the CSV file to save resources
-#  do so once in annotation converter
+# TODO: Adjust the custom datset to actually taking bitboards as input and not pictures:
+#  look at what output the transform type ToTensor offers and adjust the bitboards accordingly
 class WhiteMovesDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
+    def __init__(self, img_labels, img_dir, transform=None, target_transform=None):
         # Get the file containing all white moves
-        self.img_labels = pd.read_csv(annotations_file)
+        self.img_labels = img_labels 
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
@@ -19,7 +17,6 @@ class WhiteMovesDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        image = read_image(img_path)
         label = self.img_labels.iloc[idx, 1]
         if self.transform:
             image = self.transform(image)
@@ -29,9 +26,9 @@ class WhiteMovesDataset(Dataset):
 
 
 class BlackMovesDataset(Dataset):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
-        # Get a file containing all black moves 
-        self.img_labels = pd.read_csv(annotations_file)
+    def __init__(self, img_labels, img_dir, transform=None, target_transform=None):
+        # Get the file containing all black moves 
+        self.img_labels = img_labels
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform
@@ -41,7 +38,6 @@ class BlackMovesDataset(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        image = read_image(img_path)
         label = self.img_labels.iloc[idx, 1]
         if self.transform:
             image = self.transform(image)
