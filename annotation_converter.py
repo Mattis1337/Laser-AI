@@ -107,7 +107,7 @@ def fen_to_bitboard(fencode):
                 field += 1
 
             case _:
-                return "INVALID FENCODE"
+                raise ValueError('Invalid Fencode!')
 
     return bitboard
 
