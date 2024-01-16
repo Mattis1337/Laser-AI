@@ -236,8 +236,8 @@ def create_input_datasets():
 
             if i % 2 == 0:
                 with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img' , 'r+') as file_w:
-                    for i in p_bitboard[i]:
-                        file_w.write(str(i))
+                    for j in p_bitboard[i]:
+                        file_w.write(str(j))
                     file.write('\n')
 
                 with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels' , 'r+') as file_w:
@@ -247,8 +247,8 @@ def create_input_datasets():
             
             else:
                 with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img' , 'r+') as file_w:
-                    for i in p_bitboard[i]:
-                        file_w.write(str(i))
+                    for j in p_bitboard[i]:
+                        file_w.write(str(j))
                     file.write('\n')
 
                 with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels' , 'r+') as file_w:
