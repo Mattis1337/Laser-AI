@@ -170,7 +170,7 @@ model_black.load_state_dict(torch.load("model_black.pth"))
 
 classes = []  # Saves all possible outputs for the nn
 
-path = '~/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Personal path to the file with all moves
+path = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Personal path to the file with all moves
 
 with open(path, 'r') as f:
     lines = f.readlines()
