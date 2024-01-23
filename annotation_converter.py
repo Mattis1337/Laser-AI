@@ -259,6 +259,8 @@ def create_input_datasets():
 
 create_input_datasets()
 
-#TODO:  FIXING THE STORAGE OF BITBOARDS
+#TODO: IMPROVING THE STORAGE OF BITBOARDS
+# When AI is working maybe don't convert pgn in RAM but save
+#
 # strip chess moves output to only the move and not all that other stuff
 # fix outputs for bitboards to be all in one line and remove the brackets [] using lstrip rstrip
