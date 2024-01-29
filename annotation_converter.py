@@ -8,6 +8,17 @@ import numpy as np
 import chess
 import chess.pgn
 
+#####PATHS TO DATA ETC######
+path_all_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.txt' # File containing all moves
+path_data_folder = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/' # Folder containing all training data
+
+# Dirs for saving training inputs -> TODO: THESE DIRS DONT EXIST YET AND USING THEM WILL CAUSE AN ERROR
+path_white_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
+path_white_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels' 
+path_black_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img'
+path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
+
+
 #####CONVERTING ANNOTATIONS#####
 
 def fen_to_bitboard(fencode):
@@ -126,20 +137,27 @@ def pgn_to_bitboard(file):
     board = game.board()
     all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
 
-    for move in game.mainline_moves():
+    for i, move in enumerate(game.mainline_moves()):
         #old_board = board
         board.push(move) 
-        #all_labels.append(board.san(old_board.push(move)))
+        print(move)
+        if i == 0:
+            t_board = game.board() 
+            t_board.ply()
+            # TODO: fix this mess.
+            # Problem seems to be the starting pos which is not accepted by san()
+            # Attempt maybe set starting positions manually with custom board t_board
+
+            t_board.san(move)
+            #print(board.san(move[0] + move(1)))
+            #print(board.san(move[2] + move(3)))
+            #all_labels.append(board.san(old_board.push(move)))
+        else:
+            board.san(move)
+        
         all_moves.append(fen_to_bitboard(board.fen()))
-    
-    game1 = chess.pgn.read_game(file)
-    board1 = game.board()
 
     all_labels = []
-
-    for move in game.mainline_moves():
-        all_labels.append(board1._algebraic(move))
-        board1.push(move)
 
     return all_moves, np.array(all_labels)
 
@@ -179,8 +197,8 @@ def scan_file(path, p_move):
 
 def create_outputs():
     """creates a file containing all possible output cases"""
-    path_p = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Path to personal file containing all moves
-    path_f = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/'  # Path to the folder containing all the games
+    path_p = path_all_moves  # Path to personal file containing all moves
+    path_f = path_data_folder # Path to the folder containing all the games
     directories = os.listdir(path_f)
 
     for file in directories:
@@ -216,7 +234,7 @@ def create_input_datasets():
           as the fitting bitboard 
     """
 
-    path_f = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/' 
+    path_f = path_data_folder
     directories = os.listdir(path_f)
 
     for file in directories:
@@ -235,32 +253,35 @@ def create_input_datasets():
             # len(p_bitboard)-1 = len(p_labels) therefore last position is ignored ()
 
             if i % 2 == 0:
-                with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img' , 'r+') as file_w:
+                with open(path_white_moves , 'r+') as file_w:
                     for j in p_bitboard[i]:
                         file_w.write(str(j))
                     file.write('\n')
 
-                with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels' , 'r+') as file_w:
+                with open(path_white_labels , 'r+') as file_w:
                     print(p_labels[i])
                     string = str(p_labels[i])+'\n'
                     file_w.write(string)
             
             else:
-                with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img' , 'r+') as file_w:
+                with open(path_black_moves , 'r+') as file_w:
                     for j in p_bitboard[i]:
                         file_w.write(str(j))
                     file.write('\n')
 
-                with open('/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels' , 'r+') as file_w:
+                with open(path_black_labels , 'r+') as file_w:
                     print(p_labels[i])
                     string = str(p_labels[i])+'\n'                    
                     file_w.write(string)
 
 
-create_input_datasets()
+# create_input_datasets()
 
 #TODO: IMPROVING THE STORAGE OF BITBOARDS
-# When AI is working maybe don't convert pgn in RAM but save
+# When AI is working maybe don't convert pgn in RAM but save it earlier since convert_input_datasets aint work
 #
 # strip chess moves output to only the move and not all that other stuff
 # fix outputs for bitboards to be all in one line and remove the brackets [] using lstrip rstrip
+
+with open(path_data_folder + "/Garry-Kasparov_vs_Jorden-van-Foreest_2021.07.11.pgn", 'r') as temp:  
+    mvs, lbls = pgn_to_bitboard(temp) 
