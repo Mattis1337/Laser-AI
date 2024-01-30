@@ -136,30 +136,18 @@ def pgn_to_bitboard(file):
     # game; must be a variable containing the whole game like presented above (from chess library)
     board = game.board()
     all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
-
-    for i, move in enumerate(game.mainline_moves()):
-        #old_board = board
-        board.push(move) 
-        print(move)
-        if i == 0:
-            t_board = game.board() 
-            t_board.ply()
-            # TODO: fix this mess.
-            # Problem seems to be the starting pos which is not accepted by san()
-            # Attempt maybe set starting positions manually with custom board t_board
-
-            t_board.san(move)
-            #print(board.san(move[0] + move(1)))
-            #print(board.san(move[2] + move(3)))
-            #all_labels.append(board.san(old_board.push(move)))
-        else:
-            board.san(move)
-        
-        all_moves.append(fen_to_bitboard(board.fen()))
-
     all_labels = []
 
-    return all_moves, np.array(all_labels)
+    for move in game.mainline_moves():
+        
+        all_labels.append(board.san(move)) # San has to be done before pushing the move 
+        
+        board.push(move) # Then push a move 
+        
+        all_moves.append(fen_to_bitboard(board.fen())) # Then append the newly created bitboard
+
+
+    return all_moves, all_labels
 
 
 def print_bitboard_fen(bitboard):
@@ -181,25 +169,13 @@ def move_filter(move):
     return str.strip(move)
 
 
-def scan_file(path, p_move):
-    """scans a file for a certain string and adds it if not found"""
-    with open(path, 'r+') as file:
-
-        lines = file.readlines()
-        for line in lines:
-            if p_move == move_filter(line):
-                return
-
-        #print(p_move)
-        #print(move_filter(line))
-        file.write(p_move + '\n')
-
-
 def create_outputs():
     """creates a file containing all possible output cases"""
     path_p = path_all_moves  # Path to personal file containing all moves
     path_f = path_data_folder # Path to the folder containing all the games
     directories = os.listdir(path_f)
+
+    found = 0
 
     for file in directories:
         f_current = open(path_f + '/' + file, 'r')
@@ -215,9 +191,16 @@ def create_outputs():
             ]
 
             for p_move in legal_moves_lst:
-                scan_file(path_p, p_move)
+                found = 0
+                file = open(path_p, 'r+')
+                lines = file.readlines()
+                for line in lines:
+                    if p_move == move_filter(line):
+                        found = 1
+                        break
+                if found != 1:
+                    file.write(p_move + '\n')
 
-#create_outputs() # Run this once all the games are in the database
 
 #####INITIALISING FILES FOR INPUTS#####
 
@@ -275,13 +258,4 @@ def create_input_datasets():
                     file_w.write(string)
 
 
-# create_input_datasets()
-
-#TODO: IMPROVING THE STORAGE OF BITBOARDS
-# When AI is working maybe don't convert pgn in RAM but save it earlier since convert_input_datasets aint work
-#
-# strip chess moves output to only the move and not all that other stuff
-# fix outputs for bitboards to be all in one line and remove the brackets [] using lstrip rstrip
-
-with open(path_data_folder + "/Garry-Kasparov_vs_Jorden-van-Foreest_2021.07.11.pgn", 'r') as temp:  
-    mvs, lbls = pgn_to_bitboard(temp) 
+#TODO: Create input and create output move to csv branch and data_preparer file and will create csv files
