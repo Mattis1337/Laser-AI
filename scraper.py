@@ -55,7 +55,7 @@ def get_games_pgn(username):
         games = requests.get(url=archive, headers=json_header).json()["games"]  # 2d array of game representations
         for game in games:
             # apply game filters here
-            if game["time_class"] == "rapid":
+            if game["time_class"] == "bullet":
                 continue
             filtered_games.append(game["pgn"])
 
