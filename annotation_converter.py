@@ -8,9 +8,9 @@ import numpy as np
 import chess
 import chess.pgn
 
-#####PATHS TO DATA ETC######
-path_all_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.txt' # File containing all moves
-path_data_folder = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/' # Folder containing all training data
+# PATHS TO DATA ETC
+path_all_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.txt'  # File containing all moves
+path_data_folder = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/'  # Folder containing all training data
 
 # Dirs for saving training inputs -> TODO: THESE DIRS DONT EXIST YET AND USING THEM WILL CAUSE AN ERROR
 path_white_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
@@ -19,7 +19,7 @@ path_black_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/
 path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
 
 
-#####CONVERTING ANNOTATIONS#####
+# CONVERTING ANNOTATIONS
 
 def fen_to_bitboard(fencode):
     """
@@ -46,7 +46,7 @@ def fen_to_bitboard(fencode):
     bitboard[11] : black pawn (p)
     """
 
-    #TODO: Maybe adjust the dimensions to fit the pytorch requirements eg. instead of a 12x64 dimensions take 8x(8x12)
+    # TODO: Maybe adjust the dimensions to fit the pytorch requirements eg. instead of a 12x64 dimensions take 8x(8x12)
 
     # Initialising multidimensional array as bitboard
     bitboard = np.full(shape=(12, 64), fill_value=0)
@@ -140,12 +140,11 @@ def pgn_to_bitboard(file):
 
     for move in game.mainline_moves():
         
-        all_labels.append(board.san(move)) # San has to be done before pushing the move 
+        all_labels.append(board.san(move))  # San has to be done before pushing the move
         
-        board.push(move) # Then push a move 
+        board.push(move)  # Then push a move
         
-        all_moves.append(fen_to_bitboard(board.fen())) # Then append the newly created bitboard
-
+        all_moves.append(fen_to_bitboard(board.fen()))  # Then append the newly created bitboard
 
     return all_moves, all_labels
 
@@ -154,7 +153,7 @@ def print_bitboard_fen(bitboard):
     """prints a bitboard deriving from a fen"""
     for i in range(12):
         for j in range(64):
-            if (j % 8 == 0):
+            if j % 8 == 0:
                 print('')
 
             print(bitboard[i][j], end='')
@@ -162,7 +161,7 @@ def print_bitboard_fen(bitboard):
         print('')
 
 
-#####CREATING ALL POSSIBLE OUTPUTS#####
+# CREATING ALL POSSIBLE OUTPUTS
 
 def move_filter(move):
     """filters a move for '\n"""
@@ -172,7 +171,7 @@ def move_filter(move):
 def create_outputs():
     """creates a file containing all possible output cases"""
     path_p = path_all_moves  # Path to personal file containing all moves
-    path_f = path_data_folder # Path to the folder containing all the games
+    path_f = path_data_folder  # Path to the folder containing all the games
     directories = os.listdir(path_f)
 
     found = 0
@@ -202,7 +201,7 @@ def create_outputs():
                     file.write(p_move + '\n')
 
 
-#####INITIALISING FILES FOR INPUTS#####
+# INITIALISING FILES FOR INPUTS
 
 def create_input_datasets():
     """
@@ -223,39 +222,38 @@ def create_input_datasets():
     for file in directories:
         # Main loop iterating through all the files
         file = open(path_f + file, 'r+')
-        
 
         p_bitboard, p_labels = pgn_to_bitboard(file)
 
-        #white_img = []
-        #white_labels = []
-        #black_img = []
-        #black_labels = []
+        # white_img = []
+        # white_labels = []
+        # black_img = []
+        # black_labels = []
 
         for i in range(len(p_labels)):
             # len(p_bitboard)-1 = len(p_labels) therefore last position is ignored ()
 
             if i % 2 == 0:
-                with open(path_white_moves , 'r+') as file_w:
+                with open(path_white_moves, 'r+') as file_w:
                     for j in p_bitboard[i]:
                         file_w.write(str(j))
                     file.write('\n')
 
-                with open(path_white_labels , 'r+') as file_w:
+                with open(path_white_labels, 'r+') as file_w:
                     print(p_labels[i])
                     string = str(p_labels[i])+'\n'
                     file_w.write(string)
             
             else:
-                with open(path_black_moves , 'r+') as file_w:
+                with open(path_black_moves, 'r+') as file_w:
                     for j in p_bitboard[i]:
                         file_w.write(str(j))
                     file.write('\n')
 
-                with open(path_black_labels , 'r+') as file_w:
+                with open(path_black_labels, 'r+') as file_w:
                     print(p_labels[i])
                     string = str(p_labels[i])+'\n'                    
                     file_w.write(string)
 
 
-#TODO: Create input and create output move to csv branch and data_preparer file and will create csv files
+# TODO: Create input and create output move to csv branch and data_preparer file and will create csv files
