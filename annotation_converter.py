@@ -20,107 +20,38 @@ path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data
 
 
 # CONVERTING ANNOTATIONS
-
-def fen_to_bitboard(fencode):
+def fen_to_bitboards(fen):
     """
-    Function to transform FEN notation into Bitboard notation
-    :param fencode: a fencode as a  string
-    :return: a bitboard[12][64]
-
-    WHITE PIECES
-
-    bitboard[0] : white king (K)
-    bitboard[1] : white queen (Q)
-    bitboard[2] : white rook (R)
-    bitboard[3] : white knight (N)
-    bitboard[4] : white bishop (B)
-    bitboard[5] : white pawn (P)
-
-    BLACK PIECES
-
-    bitboard[6] : black king (k)
-    bitboard[7] : black queen (q)
-    bitboard[8] : black rook (r)
-    bitboard[9] : black knight (n)
-    bitboard[10] : black bishop (b)
-    bitboard[11] : black pawn (p)
+    Converts a FEN to an array of integers. Converted to binary, they return bitboards.
+    The order in the array is the same as python chess':
+        0. White pawns
+        1. White knights
+        [...] sorted by value
+        6. black pawns
+        7. black knights
+        [...] sorted by value
+        11. black king
+    :param fen: The notation to convert
+    :return: An array of twelve bitboards
     """
+    board = chess.Board(fen)
+    bitboards = []
 
-    # TODO: Maybe adjust the dimensions to fit the pytorch requirements eg. instead of a 12x64 dimensions take 8x(8x12)
+    for color in chess.COLORS:
+        for piece_type in chess.PIECE_TYPES:
+            # creates an empty bitboard for the specific type of piece and exact color
+            bitboard = 0
+            piece = chess.Piece(piece_type, color)
 
-    # Initialising multidimensional array as bitboard
-    bitboard = np.full(shape=(12, 64), fill_value=0)
-    # field serves as a counter for the chess field one is operating
-    field = 0
+            # iterates over all squares
+            for square in range(64):
+                if board.piece_at(square) == piece:
+                    bitboard |= 1 << square  # sets the square-th bit to 1
 
-    for i in range(len(fencode)):
+            # adds the bitboard to the list
+            bitboards.append(bitboard)
 
-        n = fencode[i]
-
-        if n.isdigit():
-            field += int(n)
-            continue
-
-        if n == '/':
-            continue
-
-        if n == ' ':
-            # checking whether this is the end of the notation or not
-            return bitboard
-
-        match n:
-            case 'K':
-                bitboard[0][field] = 1
-                field += 1
-
-            case 'Q':
-                bitboard[1][field] = 1
-                field += 1
-
-            case 'R':
-                bitboard[2][field] = 1
-                field += 1
-
-            case 'N':
-                bitboard[3][field] = 1
-                field += 1
-
-            case 'B':
-                bitboard[4][field] = 1
-                field += 1
-
-            case 'P':
-                bitboard[5][field] = 1
-                field += 1
-
-            case 'k':
-                bitboard[6][field] = 1
-                field += 1
-
-            case 'q':
-                bitboard[7][field] = 1
-                field += 1
-
-            case 'r':
-                bitboard[8][field] = 1
-                field += 1
-
-            case 'n':
-                bitboard[9][field] = 1
-                field += 1
-
-            case 'b':
-                bitboard[10][field] = 1
-                field += 1
-
-            case 'p':
-                bitboard[11][field] = 1
-                field += 1
-
-            case _:
-                raise ValueError('Invalid Fencode!')
-
-    return bitboard
+    return bitboards
 
 
 def pgn_to_bitboard(file):
@@ -135,7 +66,7 @@ def pgn_to_bitboard(file):
     # function will have to receive:
     # game; must be a variable containing the whole game like presented above (from chess library)
     board = game.board()
-    all_moves = [fen_to_bitboard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
+    all_moves = [fen_to_bitboards('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
     all_labels = []
 
     for move in game.mainline_moves():
@@ -144,7 +75,7 @@ def pgn_to_bitboard(file):
         
         board.push(move)  # Then push a move
         
-        all_moves.append(fen_to_bitboard(board.fen()))  # Then append the newly created bitboard
+        all_moves.append(fen_to_bitboards(board.fen()))  # Then append the newly created bitboard
 
     return all_moves, all_labels
 
