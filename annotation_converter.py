@@ -54,6 +54,11 @@ def fen_to_bitboards(fen):
     return bitboards
 
 
+# boards = fen_to_bitboards(chess.STARTING_FEN)
+# for bb in boards:
+#     print(format(bb, '064b'))
+
+
 def pgn_to_bitboard(file):
     """
     Function to transform the algebraic chess notation into a bitboard.
