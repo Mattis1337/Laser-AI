@@ -98,16 +98,27 @@ def pgn_to_bitboards_snapshots(pgn):
     return bitboards, moves
 
 
-def print_bitboard_fen(bitboard):
-    """prints a bitboard deriving from a fen"""
-    for i in range(12):
-        for j in range(64):
-            if j % 8 == 0:
-                print('')
+def print_bitboard(bitboard):
+    """
+    Prints a bitboard in human-readable format to standard output.
+    :param bitboard: The bitboard to print
+    """
+    binary = format(bitboard, '064b')    # converts int to binary
+    formatted = '\n'.join([binary[i:i + 8] for i in range(0, len(binary), 8)])  # inserts linebreaks representing rows
+    print(formatted)
 
-            print(bitboard[i][j], end='')
 
-        print('')
+def print_type_bitboards(bitboards):
+    """
+    Prints every piece bitboard and the piece type it is representing to standard output in a human-readable format.
+    :param bitboards: An array of 12 piece bitboards created by fen_to_bitboards
+    """
+    for i, color in enumerate(chess.COLOR_NAMES[::-1]):  # slicing reverses list because COLOR_NAMES is mirrored
+        for j, piece in enumerate(chess.PIECE_NAMES[1:]):   # slicing removes first element which would be None
+            print(f"\n {color} {piece}s:")
+            # calculates the index in the bitboards array corresponding to the current color and piece type
+            index = i * len(chess.PIECE_TYPES) + j
+            print_bitboard(bitboards[index])
 
 
 # CREATING ALL POSSIBLE OUTPUTS
