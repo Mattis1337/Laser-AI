@@ -1,9 +1,6 @@
 # import libraries
 import os
 
-# calculations
-import numpy as np
-
 # pgn converter
 import chess
 import chess.pgn
@@ -59,30 +56,46 @@ def fen_to_bitboards(fen):
 #     print(format(bb, '064b'))
 
 
-def pgn_to_bitboard(file):
+def pgn_to_bitboards_final(pgn):
     """
-    Function to transform the algebraic chess notation into a bitboard.
-    :param file: the file containing the notation
-    :return: a bitboard displaying the chess field according to the notation
+    Plays every move of a PGN file and saves the last board state as a bitboard.
+    :param pgn: The PGN file to read
+    :return: The final bitboard
     """
-
-    game = chess.pgn.read_game(file)
-
-    # function will have to receive:
-    # game; must be a variable containing the whole game like presented above (from chess library)
+    game = chess.pgn.read_game(pgn)  # loads game in
     board = game.board()
-    all_moves = [fen_to_bitboards('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR')]
-    all_labels = []
 
+    # iterates every move
     for move in game.mainline_moves():
-        
-        all_labels.append(board.san(move))  # San has to be done before pushing the move
-        
-        board.push(move)  # Then push a move
-        
-        all_moves.append(fen_to_bitboards(board.fen()))  # Then append the newly created bitboard
+        board.push(move)  # plays current move
 
-    return all_moves, all_labels
+    return fen_to_bitboards(board.fen())
+
+
+def pgn_to_bitboards_snapshots(pgn):
+    """
+    Converts a PGN file to two arrays. The first one contains bitboards grouped by piece type in a subarray.
+    The next move is stored in second one as well. This is done by snapshotting the board after each move.
+    Therefore, accessing the corresponding move to the bitboard can be done by using the same index
+    :param pgn: The PGN file to read
+    :return: Two arrays containing a bitboards and the next move in SAN
+    """
+    game = chess.pgn.read_game(pgn)  # loads game in
+    board = game.board()
+    bitboards = []
+    moves = []
+
+    # iterates through every move
+    for move in game.mainline_moves():
+        bitboard = fen_to_bitboards(board.fen())    # gets current bitboard
+        san = board.san(move)   # gets next move in Standard Algebraic Notation
+        # saves the data
+        bitboards.append(bitboard)
+        moves.append(san)
+        # plays next move
+        board.push(move)
+
+    return bitboards, moves
 
 
 def print_bitboard_fen(bitboard):
@@ -159,7 +172,7 @@ def create_input_datasets():
         # Main loop iterating through all the files
         file = open(path_f + file, 'r+')
 
-        p_bitboard, p_labels = pgn_to_bitboard(file)
+        p_bitboard, p_labels = pgn_to_bitboards_snapshots(file)
 
         # white_img = []
         # white_labels = []
