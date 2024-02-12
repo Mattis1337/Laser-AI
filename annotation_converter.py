@@ -78,7 +78,7 @@ def pgn_to_bitboards_snapshots(pgn):
     The next move is stored in second one as well. This is done by snapshotting the board after each move.
     Therefore, accessing the corresponding move to the bitboard can be done by using the same index
     :param pgn: The PGN file to read
-    :return: Two arrays containing a bitboards and the next move in SAN
+    :return: Two arrays containing bitboards and the next move in SAN
     """
     game = chess.pgn.read_game(pgn)  # loads game in
     board = game.board()
@@ -139,7 +139,7 @@ def create_outputs():
     for file in directories:
         f_current = open(path_f + '/' + file, 'r')
         game = chess.pgn.read_game(f_current)  # Opens current game from databank
-        board = chess.Board(chess.STARTING_BOARD_FEN)  # Creates board all moves will be pushed from
+        board = game.board()  # Creates board all moves will be pushed from
 
         for move in game.mainline_moves():  # Add move to board to get diff situation
             board.push(move)
