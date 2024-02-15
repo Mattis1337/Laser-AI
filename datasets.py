@@ -2,12 +2,13 @@ import os
 
 from torch.utils.data import Dataset
 
+
 # TODO: Adjust the custom datset to actually taking bitboards as input and not pictures:
 #  look at what output the transform type ToTensor offers and adjust the bitboards accordingly
 class WhiteMovesDataset(Dataset):
     def __init__(self, img_labels, img_dir, transform=None, target_transform=None):
         # Get the file containing all white moves
-        self.img_labels = img_labels 
+        self.img_labels = img_labels
         self.img_dir = img_dir
         self.transform = transform
         self.target_transform = target_transform

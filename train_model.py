@@ -48,10 +48,10 @@ class NeuralNetwork(nn.Module):
 
 def train(dataloader, device, model, loss_fn, optimizer):
     """
-    Training a given model
-    :param dataloader: the dataloader which shall be used for training
-    :param device: the device which shall be used for training
-    :param model: the model which shall be used for training
+    Training a chess model depending on the color
+    :param dataloader: the dataloader containing the white/black moves which shall be used for training
+    :param device: the device (e.g. cpu, cuda) which shall be used for training
+    :param model: a model object instantiated from NeuralNetwork
     :param loss_fn: loss function
     :param optimizer: optimizer
     """
@@ -78,9 +78,9 @@ def train(dataloader, device, model, loss_fn, optimizer):
 def test(dataloader, device, model, loss_fn,):
     """
     Testing the accuracy of a given model
-    :param dataloader: the dataloader which shall be used for testing
-    :param device: the device which shall be used for testing
-    :param model: the model which shall be used for testing
+    :param dataloader: the dataloader containing the white/black moves which shall be used for testing
+    :param device: the device (e.g. cpu, cuda) which shall be used for testing
+    :param model: a model object instantiated from NeuralNetwork
     :param loss_fn: loss function
     """
 
@@ -116,7 +116,7 @@ def exit_handler(model, save_file):
     print(f"Saved PyTorch Current Model State to {save_file}")
 
 
-def train_module(dataset):
+def create_chess_model(dataset):
     """
     This function will train a neural network by creating an instance of
     the neural network class loading the according weights onto it and then
@@ -124,7 +124,7 @@ def train_module(dataset):
     :param dataset: instance of a custom dataset class
     """
 
-    # batch size
+    # batch size (adjust if training is too slow or the hardware is not good enough)
     batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
     train_dataloader = DataLoader(dataset, batch_size)
@@ -149,7 +149,7 @@ def train_module(dataset):
         atexit.register(exit_handler, model, "white_model.pth")
 
     elif isinstance(dataset, BlackMovesDataset):
-        atexit.register(exit_handler, model,"black_model.pth")
+        atexit.register(exit_handler, model, "black_model.pth")
 
     else:
         raise ValueError("Dataset must be either of the instance of white or black but neither was given.")
@@ -176,7 +176,7 @@ def train_module(dataset):
         print("Saved PyTorch Model State to model_white.pth")
 
 
-def prediction_nn(color, game_state):
+def generate_move(color, game_state):
     """
     When using the AI this function will return the move for a given
     game state.
