@@ -6,3 +6,4 @@ A chess AI that plays like a pro!
 * `chess`
 * `torch` `torchvision` `torchaudio`
 * `pandas`
+* `requests`
