@@ -37,11 +37,11 @@ def fen_to_bitboards(fen):
     for color in chess.COLORS:
         for piece_type in chess.PIECE_TYPES:
             # creates an empty bitboard for the specific type of piece and exact color
-            bitboard = 0
+            bitboard = chess.BB_EMPTY
             piece = chess.Piece(piece_type, color)
 
             # iterates over all squares
-            for square in range(64):
+            for square in chess.SQUARES:
                 if board.piece_at(square) == piece:
                     bitboard |= 1 << square  # sets the square-th bit to 1
 
@@ -133,8 +133,6 @@ def create_outputs():
     path_p = path_all_moves  # Path to personal file containing all moves
     path_f = path_data_folder  # Path to the folder containing all the games
     directories = os.listdir(path_f)
-
-    found = 0
 
     for file in directories:
         f_current = open(path_f + '/' + file, 'r')
