@@ -29,9 +29,13 @@ def fen_to_bitboards(fen):
         [...] sorted by value
         11. black king
     :param fen: The notation to convert
-    :return: An array of twelve bitboards
+    :return: An array of twelve bitboards. NULLABLE!
     """
-    board = chess.Board(fen)
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        return None
+
     bitboards = []
 
     for color in chess.COLORS:
@@ -60,10 +64,13 @@ def pgn_to_bitboards_final(pgn):
     """
     Plays every move of a PGN file and saves the last board state as a bitboard.
     :param pgn: The PGN file to read
-    :return: The final bitboard
+    :return: The final bitboard. NULLABLE!
     """
-    game = chess.pgn.read_game(pgn)  # loads game in
-    board = game.board()
+    try:
+        game = chess.pgn.read_game(pgn)  # loads game in
+        board = game.board()
+    except ValueError:
+        return None
 
     # iterates every move
     for move in game.mainline_moves():
@@ -78,10 +85,14 @@ def pgn_to_bitboards_snapshots(pgn):
     The next move is stored in second one as well. This is done by snapshotting the board after each move.
     Therefore, accessing the corresponding move to the bitboard can be done by using the same index
     :param pgn: The PGN file to read
-    :return: Two arrays containing bitboards and the next move in SAN
+    :return: Two arrays containing bitboards and the next move in SAN. NULLABLE!
     """
-    game = chess.pgn.read_game(pgn)  # loads game in
-    board = game.board()
+    try:
+        game = chess.pgn.read_game(pgn)  # loads game in
+        board = game.board()
+    except ValueError:
+        return None, None
+
     bitboards = []
     moves = []
 
