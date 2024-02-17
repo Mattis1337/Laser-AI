@@ -2,7 +2,7 @@
 import numpy as np
 
 # importing own files
-from annotation_converter import *
+from chess_annotation import *
 #import train_model
 
 

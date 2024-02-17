@@ -3,7 +3,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 
-import annotation_converter
+import chess_annotation
 from datasets import WhiteMovesDataset, BlackMovesDataset
 import atexit
 
