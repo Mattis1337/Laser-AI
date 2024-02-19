@@ -138,35 +138,4 @@ def move_filter(move):
     return str.strip(move)
 
 
-def create_outputs():
-    """creates a file containing all possible output cases"""
-    path_p = path_all_moves  # Path to personal file containing all moves
-    path_f = path_data_folder  # Path to the folder containing all the games
-    directories = os.listdir(path_f)
-
-    for file in directories:
-        f_current = open(path_f + '/' + file, 'r')
-        game = chess.pgn.read_game(f_current)  # Opens current game from databank
-        board = game.board()  # Creates board all moves will be pushed from
-
-        for move in game.mainline_moves():  # Add move to board to get diff situation
-            board.push(move)
-
-            legal_moves_lst = [
-                board.san(move)
-                for move in board.legal_moves
-            ]
-
-            for p_move in legal_moves_lst:
-                found = 0
-                file = open(path_p, 'r+')
-                lines = file.readlines()
-                for line in lines:
-                    if p_move == move_filter(line):
-                        found = 1
-                        break
-                if found != 1:
-                    file.write(p_move + '\n')
-
-
 # TODO: Create input and create output move to csv branch and data_preparer file and will create csv files
