@@ -1,7 +1,3 @@
-# import libraries
-import os
-
-# pgn converter
 import chess
 import chess.pgn
 
