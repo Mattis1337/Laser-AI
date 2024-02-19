@@ -12,10 +12,10 @@ white_moves_csv = r"CSV/white_moves.csv"
 black_moves_csv = r"CSV/black_moves.csv"
 
 
-def get_pgn_paths(directory: str) -> list:
+def get_pgn_paths(directory: str) -> list[str]:
     """
     Gets all the fs paths to PGN files that should be read and converted to bitboards.
-    :param directory: The folder containing the PGNs
+    :param directory: The folder containing the PGNs to scan
     :return: A list of all PGN files in the game_dir
     """
     return glob(os.path.join(directory, "*.pgn"))
@@ -37,19 +37,19 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
         board_states, moves = annotation.pgn_to_bitboards_snapshots(pgn)
 
         # iterates over board_states which are represented by 12 bitboards in a list
-        for i, bitboards in enumerate(board_states):
+        for i, state in enumerate(board_states):
             # prevents crash, if bitboards couldn't be loaded
-            if bitboards is None or moves[i] is None:
+            if state is None or moves[i] is None:
                 continue
-            if any(bb is None for bb in bitboards):
+            if any(bitboard is None for bitboard in state):
                 continue
 
             data = {
-                'bitboards': bitboards,
+                'bitboards': state,
                 'move': moves[i],
             }
 
-            # white always plays even move number: 0, 2, 4, [...]
+            # white always plays even move number: 0 (first play), 2, 4, [...]
             if i % 2 == 0:
                 white_data.append(data)
             else:
