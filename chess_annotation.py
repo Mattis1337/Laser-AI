@@ -99,10 +99,9 @@ def pgn_to_bitboards_snapshots(pgn):
     # iterates through every move
     for move in game.mainline_moves():
         bitboard = fen_to_bitboards(board.fen())    # gets current bitboard
-        san = board.san(move)   # gets next move in Standard Algebraic Notation
         # saves the data
         bitboards.append(bitboard)
-        moves.append(san)
+        moves.append(move)
         # plays next move
         board.push(move)
 

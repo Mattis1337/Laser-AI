@@ -5,9 +5,12 @@ import pandas as pd
 import chess_annotation as annotation
 
 
-# a directory containing PGN files
-games_dir = r"Games"
-# the files to save the moves to
+# the directory containing chess game representations in PGN format
+pgn_dir = r"Games"
+# the paths to save the training data to
+white_games_csv = r"CSV/white_games.csv"
+black_games_csv = r"CSV/black_games.csv"
+# the paths to save the outputs to
 white_moves_csv = r"CSV/white_moves.csv"
 black_moves_csv = r"CSV/black_moves.csv"
 
@@ -58,7 +61,7 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
     return white_data, black_data
 
 
-def write_csv(data: list, path: str):
+def write_csv(data, path: str):
     """
     Writes data to a CSV file using this project's default format.
     :param data: The data to write
@@ -68,24 +71,63 @@ def write_csv(data: list, path: str):
     df.to_csv(path, mode="a", header=False, index=False)
 
 
-def convert_multiple_pgns_to_csv(pgn_file_paths: list[str], white_csv: str, black_csv: str):
+def convert_multiple_pgns_to_csv(pgn_file_paths: list[str], white_games_path: str, black_games_path: str):
     """
     Converts a list of PGN files to bitboards and saves them in two separate CSVs;
     One for black's moves and one for white's.
     :param pgn_file_paths: The PGNs to parse
-    :param white_csv: The location of the white side's CSV
-    :param black_csv: The location of the black side's CSV
+    :param white_games_path: The location of the white side's CSV
+    :param black_games_path: The location of the black side's CSV
     """
     for path in pgn_file_paths:  # iterates through every file
         # converts PGN to CSV
-        white_data, black_data = convert_single_pgn_to_csv(path)
+        white_data, black_data = convert_single_pgn_to_csv(pgn_path=path)
         # writes the data
-        write_csv(white_data, white_csv)
-        write_csv(black_data, black_csv)
+        write_csv(data=white_data, path=white_games_path)
+        write_csv(data=black_data, path=black_games_path)
         # debug information
         print(f"[CSV] Wrote data from {path}!")
 
 
+def create_one_output(game_csv: str, save_path: str):
+    """
+    Gets all the moves written to the second column of one color's dataset and removes all duplicate moves.
+    This will ensure that no under-fitting will occur as a result of the AI's outputs,
+    as each one is only present once.
+    :param game_csv: A CSV file containing mappings of board states and moves, created by convert_png_to_csv()
+    :param save_path: The path where the new CSV file should be saved at
+    """
+    games = pd.read_csv(game_csv)
+    moves = games.iloc[:, 1].drop_duplicates()    # gets the second column and removes duplicate moves
+    moves.to_csv(save_path, header=False, index=False)
+
+
+def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_moves_path: str):
+    """
+    Creates a list of moves the AI will be able to generate using all moves played in the dataset.
+    See also: create_one_output()
+    :param white_csv: The path to the white dataset
+    :param black_csv: The path to the black dataset
+    :param white_moves_path: The white output CSV's path
+    :param black_moves_path: The black output CSV's path
+    """
+    create_one_output(game_csv=white_csv, save_path=white_moves_path)
+    print(f"[CSV] Created white outputs successfully in {white_moves_path}")
+    create_one_output(game_csv=black_csv, save_path=black_moves_path)
+    print(f"[CSV] Created black outputs successfully in {black_moves_path}")
+
+
 # annotation.pgn_to_bitboards_snapshots()
-# print(get_pgn_paths(games_dir))
-convert_multiple_pgns_to_csv(get_pgn_paths(games_dir), white_moves_csv, black_moves_csv)
+# print(get_pgn_paths(pgn_dir))
+convert_multiple_pgns_to_csv(
+    pgn_file_paths=get_pgn_paths(directory=pgn_dir),
+    white_games_path=white_games_csv,
+    black_games_path=black_games_csv,
+)
+
+create_outputs(
+    white_csv=white_games_csv,
+    black_csv=black_games_csv,
+    white_moves_path=white_moves_csv,
+    black_moves_path=black_moves_csv
+)
