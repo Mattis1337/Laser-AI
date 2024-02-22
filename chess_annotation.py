@@ -1,16 +1,6 @@
 import chess
 import chess.pgn
 
-# PATHS TO DATA ETC
-path_all_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.txt'  # File containing all moves
-path_data_folder = '/home/mattis/Documents/Jugend_Forscht_2023.24/chess_data/'  # Folder containing all training data
-
-# Dirs for saving training inputs -> TODO: THESE DIRS DONT EXIST YET AND USING THEM WILL CAUSE AN ERROR
-path_white_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
-path_white_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels' 
-path_black_moves = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img'
-path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
-
 
 # CONVERTING ANNOTATIONS
 def fen_to_bitboards(fen):
