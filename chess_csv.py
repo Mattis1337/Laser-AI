@@ -122,7 +122,7 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
 convert_multiple_pgns_to_csv(
     pgn_file_paths=get_pgn_paths(directory=pgn_dir),
     white_games_path=white_games_csv,
-    black_games_path=black_games_csv,
+    black_games_path=black_games_csv
 )
 
 create_outputs(
