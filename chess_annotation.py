@@ -85,9 +85,10 @@ def pgn_to_bitboards_snapshots(pgn):
     # iterates through every move
     for move in game.mainline_moves():
         bitboard = fen_to_bitboards(board.fen())    # gets current bitboard
+        san = board.san(move).replace('+', '')  # converts move to san and removes data causing over-fitting
         # saves the data
         bitboards.append(bitboard)
-        moves.append(move)
+        moves.append(san)
         # plays next move
         board.push(move)
 
