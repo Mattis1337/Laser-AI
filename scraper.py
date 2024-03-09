@@ -2,7 +2,7 @@ import time
 import requests
 
 # use absolute paths! (or os.expand)
-save_dir = r"/home/smuil/Downloads/Games"
+save_dir = r"Games"
 
 players = [
     "magnuscarlsen",
