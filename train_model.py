@@ -1,29 +1,13 @@
+import chess
 import torch
+import torchvision.models
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToTensor
 
 import chess_annotation
-from datasets import WhiteMovesDataset, BlackMovesDataset
+import datasets
 import atexit
-
-
-# INITIALISING THE DATA
-
-# Initialising the data
-
-path_white_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
-path_white_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels'
-path_black_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img'
-path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
-
-# Getting training data:
-training_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
-training_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
-
-# Getting data for testing
-test_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
-test_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
 
 
 # Neural Network class
@@ -116,7 +100,7 @@ def exit_handler(model, save_file):
     print(f"Saved PyTorch Current Model State to {save_file}")
 
 
-def create_chess_model(dataset):
+def train_chess_model(dataset: datasets.ChessDataset) -> None:
     """
     This function will train a neural network by creating an instance of
     the neural network class loading the according weights onto it and then
@@ -125,7 +109,7 @@ def create_chess_model(dataset):
     """
 
     # batch size (adjust if training is too slow or the hardware is not good enough)
-    batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
+    batch_size = dataset.__len__  # Use datasets len() func to get the length of the whole data
 
     train_dataloader = DataLoader(dataset, batch_size)
     test_dataloader = DataLoader(dataset, batch_size)
@@ -145,10 +129,11 @@ def create_chess_model(dataset):
     print(model)
 
     # registering the exit handler with the right path
-    if isinstance(dataset, WhiteMovesDataset):
+    # the enum COLOR of the chess library is true when it is white
+    if dataset.__color__:
         atexit.register(exit_handler, model, "white_model.pth")
 
-    elif isinstance(dataset, BlackMovesDataset):
+    elif not dataset.__color__:
         atexit.register(exit_handler, model, "black_model.pth")
 
     else:
@@ -168,14 +153,15 @@ def create_chess_model(dataset):
     print("Done!")
 
     # Saving the models state to the correct file
-    if isinstance(dataset, WhiteMovesDataset):
+    if dataset.__color__:
         torch.save(model.state_dict(), "model_white.pth")
         print("Saved PyTorch Model State to model_white.pth")
-    else:
+    elif not dataset.__color__:
         torch.save(model.state_dict(), "model_white.pth")
         print("Saved PyTorch Model State to model_white.pth")
 
 
+# TODO: generate a move to a given position by initialising a model with the according weights
 def generate_move(color, game_state):
     """
     When using the AI this function will return the move for a given
@@ -205,12 +191,8 @@ def generate_move(color, game_state):
 
     classes = []  # Saves all possible outputs for the nn
 
-    path = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Personal path to the file with all moves
-
-    with open(path, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            classes.append(annotation_converter.move_filter(line))
+    path = 'moves.csv'  # Personal path to the file with all moves for a color
+    # TODO: depending on the color of the dataset load the moves csv of that color
 
     model.eval()
     x = game_state  # Game state must be the same data type the network trains with

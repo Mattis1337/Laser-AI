@@ -125,4 +125,5 @@ def move_filter(move):
     return str.strip(move)
 
 
-# TODO: Create input and create output move to csv branch and data_preparer file and will create csv files
+def bitboard_to_byteboard(bitboard: str) -> list[int]:
+    return [int(bit) for bit in format(bitboard, '064b')]  # formats int to str(bits) to list[int]
