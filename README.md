@@ -3,7 +3,7 @@ A chess AI that plays like a pro!
 
 ## Dependencies
 * `numpy`
-* `chess`
+* `python-chess`
 * `torch` `torchvision` `torchaudio`
 * `pandas`
 * `requests`
