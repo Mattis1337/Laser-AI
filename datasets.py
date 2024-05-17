@@ -38,34 +38,36 @@ class ChessDataset(Dataset):
         return image, label
 
 
-# TODO: TESTING
-def prepare_chess_data(path: str):
+def prepare_chess_data(path: str, batch: int, iter: int):
     """
     This function will convert a csv file into usable data
-    :param path: path to the CSV file
+    :param path: path to the CSV fil
+    :param batch: the number of games to be loaded
+    :param iter: the number of batches/iterations which have already been conducted over the dataframe
     """
     df = pd.read_csv(path)
 
     # create arrays with the according sizes  including the absolute size of the dataframe
-    bitboards = np.empty([len(df.index), 12])
-    # TODO: make labels an array too instead of a list
+    bitboards = np.empty([batch, 12], np.int64)
     labels = []
 
-    for i in range(len(df)):
-        bitboards[i][0] = df.values[i][0]
-        bitboards[i][1] = df.values[i][1]
-        bitboards[i][2] = df.values[i][2]
-        bitboards[i][3] = df.values[i][3]
-        bitboards[i][4] = df.values[i][4]
-        bitboards[i][5] = df.values[i][5]
-        bitboards[i][6] = df.values[i][6]
-        bitboards[i][7] = df.values[i][7]
-        bitboards[i][8] = df.values[i][8]
-        bitboards[i][9] = df.values[i][9]
-        bitboards[i][10] = df.values[i][10]
-        bitboards[i][11] = df.values[i][11]
+    for i in range(batch):
+        if df.values[i] is None: break
 
-        labels.append(df.values[i][12])
+        bitboards[i][0] = df.values[i + (iter * batch)][0]
+        bitboards[i][1] = df.values[i + (iter * batch)][1]
+        bitboards[i][2] = df.values[i + (iter * batch)][2]
+        bitboards[i][3] = df.values[i + (iter * batch)][3]
+        bitboards[i][4] = df.values[i + (iter * batch)][4]
+        bitboards[i][5] = df.values[i + (iter * batch)][5]
+        bitboards[i][6] = df.values[i + (iter * batch)][6]
+        bitboards[i][7] = df.values[i + (iter * batch)][7]
+        bitboards[i][8] = df.values[i + (iter * batch)][8]
+        bitboards[i][9] = df.values[i + (iter * batch)][9]
+        bitboards[i][10] = df.values[i + (iter * batch)][10]
+        bitboards[i][11] = df.values[i + (iter * batch)][11]
+
+        labels.append(df.values[i + (iter * batch)][12])
 
     return bitboards, labels
 
