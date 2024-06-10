@@ -126,4 +126,4 @@ def move_filter(move):
 
 
 def bitboard_to_byteboard(bitboard) -> list[int]:
-    return [int(bit) for bit in format(bitboard, '064b')]  # formats int to str(bits) to list[int]
+    return [int(bit) for bit in format(int(bitboard), '064b')]  # formats int to str(bits) to list[int]
