@@ -1,16 +1,17 @@
 import chess
 import pandas as pd
 import numpy as np
+import torch
 
 from chess_csv import white_games_csv, black_games_csv
 from chess_annotation import bitboard_to_byteboard
+import data_transformations as dt
 
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+from torchvision import utils
 
 
-# TODO: Adjust the custom dataset to actually taking bitboards as input and not pictures:
-#  -look at what output the transform type ToTensor offers and adjust the bitboards accordingly
-#  -also look at vgg and what that does
 class ChessDataset(Dataset):
     def __init__(self, img_dir, batch_size, iter_num, color, transform=None, target_transform=None):
         # Get the file containing all white moves
@@ -25,22 +26,29 @@ class ChessDataset(Dataset):
     def __color__(self) -> chess.COLORS:
         return self.color
 
-    # TODO: turn bitboards into byteboards before parsing them to the network via this function
-    def __getitem__(self, idx: int):
-        # img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
+    def __getitem__(self, idx):
+        # img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])1
+
         label = self.labels[idx]
         byte_image = self.data[idx]
-        bit_image = np.empty([12, 64])  # read_image converts into rgb or grayscale, so maybe load nums accordingly
+        # 3 channels
+        bit_image = np.empty([12, 8, 8], np.float32)
 
+        # transforming bitboards
         for i in range(12):
             temp_holder = bitboard_to_byteboard(byte_image[i])
+            c = 0
 
             for j in range(64):
-                bit_image[i][j] = temp_holder[j]
-        # if self.transform:
-            # image = self.transform(image)  # idk what the fuck this is
-        # if self.target_transform:
-            # label = self.target_transform(label)
+                if j % 8 == 0 and j != 0:
+                    c += 1
+                bit_image[i][c][j % 8] = temp_holder[j]
+
+        # turning the np.array into a pytorch tensor
+        if self.transform:
+            bit_image = self.transform(bit_image)
+
+        # bit_image = bit_image.permute(0, 4, 1, 2, 3)
         return bit_image, label
 
 
@@ -51,10 +59,11 @@ def prepare_chess_data(path: str, batch: int, iter: int):
     :param batch: the number of games to be loaded
     :param iter: the number of batches/iterations which have already been conducted over the dataframe
     """
-    df = pd.read_csv("/home/user/path/to/" + path)  # TODO: change this line depending on your own path
+
+    df = pd.read_csv("/home/user/path" + path)  # TODO: change this line depending on your own path
 
     # create arrays with the according sizes  including the absolute size of the dataframe
-    bitboards = np.empty([batch, 12], np.int64)
+    bitboards = np.empty((batch, 12))
     labels = []
 
     for i in range(batch):
@@ -83,8 +92,16 @@ def init_chess_dataset(color: chess.COLORS,batch_size: int,  iter_num: int) -> C
         raise ValueError(f"Variable color must be of type {chess.COLORS} but is of type {type(color)}!")
 
     if color:
-        dataset = ChessDataset(black_games_csv, batch_size, iter_num, color)
+        dataset = ChessDataset(black_games_csv,
+                               batch_size,
+                               iter_num,
+                               color,
+                               transform=dt.ToTensor())  # dt.RandomCrop(4) additionally
         return dataset
+
     elif not color:
-        dataset = ChessDataset(white_games_csv, batch_size, iter_num, color)
+        dataset = ChessDataset(white_games_csv,
+                               batch_size,
+                               iter_num, color,
+                               transform=dt.ToTensor())
         return dataset

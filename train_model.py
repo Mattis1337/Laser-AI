@@ -1,71 +1,74 @@
-import chess
 import torch
-import torchvision.models
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
 
-import chess_annotation
 import datasets
 import atexit
 
 
+# TODO: https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
-    """The Neural Network class"""
-    def __init__(self):
+    def __init__(self, batch_size):
         super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+        # NOTE: these parameters are still up for optimization
+        self.conv1 = nn.Conv2d(batch_size, 6, 2)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 2)
+        self.fc1 = nn.Linear(1, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
 
     def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
-def train(dataloader, device, model, loss_fn, optimizer):
+# Single iteration training
+def train(dataloader, model, criterion, optimizer):
     """
     Training a chess model depending on the color
     :param dataloader: the dataloader containing the white/black moves which shall be used for training
-    :param device: the device (e.g. cpu, cuda) which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
-    :param loss_fn: loss function
+    :param criterion: loss function
     :param optimizer: optimizer
     """
 
     size = len(dataloader.dataset)
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
 
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
+    for batch, data in enumerate(dataloader):
+        inputs, labels = data  # not adjusted for CUDA devices
+        print(inputs)
 
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
+        # zero the parameter gradient
         optimizer.zero_grad()
 
+        # forward + backward + optimize
+        pred = model(inputs)
+        loss = criterion(pred, torch.from_numpy(labels))  # TODO: turn all possible outputs into usable tensor type
+        loss.backward()
+        optimizer.step()
+
+        # statistics ...
         if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
+            loss, current = loss.item(), (batch + 1) * len(inputs)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
+    print("Epoch done!")
 
-def test(dataloader, device, model, loss_fn,):
+
+def test(dataloader, device, model, criterion,):
     """
     Testing the accuracy of a given model
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param device: the device (e.g. cpu, cuda) which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
-    :param loss_fn: loss function
     """
 
     for X, y in dataloader:
@@ -81,7 +84,7 @@ def test(dataloader, device, model, loss_fn,):
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             pred = model(X)
-            test_loss += loss_fn(pred, y).item()
+            test_loss += criterion(pred, y).item()
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
@@ -100,6 +103,7 @@ def exit_handler(model, save_file):
     print(f"Saved PyTorch Current Model State to {save_file}")
 
 
+# full iterations training
 def train_chess_model(dataset: datasets.ChessDataset) -> None:
     """
     This function will train a neural network by creating an instance of
@@ -109,56 +113,44 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     """
 
     # batch size (adjust if training is too slow or the hardware is not good enough)
-    batch_size = dataset.__len__  # Use datasets len() func to get the length of the whole data
+    batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
-    train_dataloader = DataLoader(dataset, batch_size)
-    test_dataloader = DataLoader(dataset, batch_size)
-
-    # Get cpu, gpu or mps device for training.
-    hardware_device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    print(f"Using {hardware_device} device")
+    train_dataloader = DataLoader(dataset, batch_size, shuffle=True, num_workers=4)
+    test_dataloader = DataLoader(dataset, batch_size, shuffle=True, num_workers=4)
 
     # Initialising the module
-    model = NeuralNetwork().to(hardware_device)
+    model = NeuralNetwork(batch_size)
     print(model)
 
     # registering the exit handler with the right path
     # the enum COLOR of the chess library is true when it is white
-    if dataset.__color__:
+    if dataset.__color__() is True:
         atexit.register(exit_handler, model, "white_model.pth")
 
-    elif not dataset.__color__:
+    elif dataset.__color__() is False:
         atexit.register(exit_handler, model, "black_model.pth")
 
     else:
         raise ValueError("Dataset must be either of the instance of white or black but neither was given.")
 
     # Setting the module parameters
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
     # Train the network for the set epoch size
     epochs = 5
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
-        train(train_dataloader, hardware_device, model, loss_fn, optimizer)
-        test(test_dataloader, hardware_device, model, loss_fn)
+    for epoch in range(epochs):
+        print(f"Epoch {epoch+1}\n-------------------------------")
+        train(train_dataloader, model, criterion, optimizer)
+        test(test_dataloader, model, criterion, optimizer)
 
     print("Done!")
 
     # Saving the models state to the correct file
     if dataset.__color__:
-        torch.save(model.state_dict(), "model_white.pth")
-        print("Saved PyTorch Model State to model_white.pth")
+        exit_handler(model, "white_model.pth")
     elif not dataset.__color__:
-        torch.save(model.state_dict(), "model_white.pth")
-        print("Saved PyTorch Model State to model_white.pth")
+        exit_handler(model, "black_model.pth")
 
 
 # TODO: generate a move to a given position by initialising a model with the according weights
@@ -180,7 +172,7 @@ def generate_move(color, game_state):
     print(f"Using {hardware_device} device")
 
     # Initialising a model
-    model = NeuralNetwork().to(hardware_device)
+    model = NeuralNetwork(1).to(hardware_device)
 
     # Loading the correct state to the model
     if color == "white":
