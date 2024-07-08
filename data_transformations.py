@@ -50,3 +50,24 @@ class ToTensor(object):
         image = image.transpose()
         return torch.from_numpy(image)
 
+
+def string_to_tensor(str_list):
+    # https://stackoverflow.com/questions/44617871/how-to-convert-a-list-of-strings-into-a-tensor-in-pytorch
+
+    max_l = 0
+    tensor_list = []  # list of tensors
+
+    # turn str to byte and get the max byte size
+    for sample in str_list:
+        tensor_list.append(torch.ByteTensor(list(bytes(sample, 'utf8'))))
+        max_l = max(tensor_list[-1].size()[0], max_l)
+
+    # max_l will always be 1 and since the number of chars in a move notation can be up to 7 we take 8 for smoother
+    # calculations
+    input_dimension = [8, max_l]
+    # turn the tensors into 1 tensor of uint8
+    proc_tensor = torch.zeros(input_dimension, dtype=torch.float)  # processed tensor
+    for i, tensor in enumerate(tensor_list):
+        proc_tensor[i, 0:tensor.size()[0]] = tensor
+
+    return proc_tensor

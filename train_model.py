@@ -1,3 +1,4 @@
+import chess as c
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -7,7 +8,7 @@ import datasets
 import atexit
 
 
-# TODO: https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
+# https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
     def __init__(self, batch_size):
@@ -16,9 +17,9 @@ class NeuralNetwork(nn.Module):
         self.conv1 = nn.Conv2d(batch_size, 6, 2)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 2)
-        self.fc1 = nn.Linear(1, 120)
+        self.fc1 = nn.Linear(1, 120)  # this seems kinds sketchy...
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
+        self.fc3 = nn.Linear(84, 8)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -42,21 +43,21 @@ def train(dataloader, model, criterion, optimizer):
 
     size = len(dataloader.dataset)
 
-    for batch, data in enumerate(dataloader):
+    for batch, data in enumerate(dataloader, 0):
         inputs, labels = data  # not adjusted for CUDA devices
-        print(inputs)
 
         # zero the parameter gradient
         optimizer.zero_grad()
 
         # forward + backward + optimize
         pred = model(inputs)
-        loss = criterion(pred, torch.from_numpy(labels))  # TODO: turn all possible outputs into usable tensor type
+        labels = labels.squeeze_()
+        loss = criterion(pred, labels)
         loss.backward()
         optimizer.step()
 
         # statistics ...
-        if batch % 100 == 0:
+        if batch % 16 == 0:
             loss, current = loss.item(), (batch + 1) * len(inputs)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
@@ -138,18 +139,18 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
     # Train the network for the set epoch size
-    epochs = 5
+    epochs = 10
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer)
-        test(test_dataloader, model, criterion, optimizer)
+        # test(test_dataloader, model, criterion, optimizer)
 
     print("Done!")
 
     # Saving the models state to the correct file
-    if dataset.__color__:
+    if dataset.__color__ == c.WHITE:
         exit_handler(model, "white_model.pth")
-    elif not dataset.__color__:
+    elif not dataset.__color__ == c.BLACK:
         exit_handler(model, "black_model.pth")
 
 
@@ -161,7 +162,7 @@ def generate_move(color, game_state):
     :param color: what type of AI is to be trained
     :param game_state: the state of the game which a move is to be generated for
     """
-    # Get cpu, gpu or mps device for training.
+    # this is unnecessary for now
     hardware_device = (
         "cuda"
         if torch.cuda.is_available()

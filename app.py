@@ -11,6 +11,9 @@ print("Laser-AI")
 
 # Training the model works as follows:
 # usually you take a batch size of 100
-dataset = datasets.init_chess_dataset(c.BLACK, 20, 1)
+for i in range(100):
+    dataset = datasets.init_chess_dataset(c.BLACK, 16, i)  # batch size has to be 16
 
-train_model.train_chess_model(dataset)
+    train_model.train_chess_model(dataset)
+
+print("Goodbye")
