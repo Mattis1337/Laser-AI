@@ -56,7 +56,7 @@ def prepare_chess_data(path: str, batch: int, iteration: int):
     :param iteration: the number of batches/iterations which have already been conducted over the dataframe
     """
 
-    df = pd.read_csv("/home/mattis/development/" + path)  # TODO: change this line depending on your own path
+    df = pd.read_csv("/path/to/games" + path)  # TODO: change this line depending on your own path
 
     # create arrays with the according sizes  including the absolute size of the dataframe
     bitboards = np.empty((batch, 12))
