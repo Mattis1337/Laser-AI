@@ -132,7 +132,8 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
         atexit.register(exit_handler, model, "black_model.pth")
 
     else:
-        raise ValueError("Dataset must be either of the instance of white or black but neither was given.")
+        raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
+                         f"but {dataset.__color__()} was given.")
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
