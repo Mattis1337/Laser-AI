@@ -63,27 +63,18 @@ def prepare_chess_data(path: str, batch: int, iteration: int):
     labels = []
 
     for i in range(batch):
-        if df.values[i] is None: break
+        if df.values[i] is None:
+            break
 
-        bitboards[i][0] = df.values[i + (iteration * batch)][0]
-        bitboards[i][1] = df.values[i + (iteration * batch)][1]
-        bitboards[i][2] = df.values[i + (iteration * batch)][2]
-        bitboards[i][3] = df.values[i + (iteration * batch)][3]
-        bitboards[i][4] = df.values[i + (iteration * batch)][4]
-        bitboards[i][5] = df.values[i + (iteration * batch)][5]
-        bitboards[i][6] = df.values[i + (iteration * batch)][6]
-        bitboards[i][7] = df.values[i + (iteration * batch)][7]
-        bitboards[i][8] = df.values[i + (iteration * batch)][8]
-        bitboards[i][9] = df.values[i + (iteration * batch)][9]
-        bitboards[i][10] = df.values[i + (iteration * batch)][10]
-        bitboards[i][11] = df.values[i + (iteration * batch)][11]
+        for j in range(12):
+            bitboards[i][j] = df.values[i + (iteration * batch)][j]
 
         labels.append(df.values[i + (iteration * batch)][12])
 
     return bitboards, labels
 
 
-def init_chess_dataset(color: chess.COLORS, batch_size: int,  iter_num: int) -> ChessDataset:
+def init_chess_dataset(color: chess.COLORS, batch_size: int, iter_num: int) -> ChessDataset:
     if color is not True and color is not False:
         raise ValueError(f"Variable color must be of type {chess.COLORS} but is of type {type(color)}!")
 
