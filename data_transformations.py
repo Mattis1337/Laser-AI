@@ -2,9 +2,9 @@ import torch
 import numpy as np
 
 
-# TODO: adjusting the functions to our desires
 #  https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html
 
+# TODO: Adjust class to custom Dataset
 class RandomCrop(object):
     """Crop randomly the image in a sample.
 
@@ -52,22 +52,18 @@ class ToTensor(object):
 
 
 def string_to_tensor(str_list):
-    # https://stackoverflow.com/questions/44617871/how-to-convert-a-list-of-strings-into-a-tensor-in-pytorch
+    # setting the input dimensions to a max of 8 chars
+    input_dimension = [8, 1]
+    # parsing the only item in the list
+    string = str_list[0]
+    # initialising the Float Tensor
+    proc_tensor = torch.zeros(input_dimension, dtype=torch.float)
 
-    max_l = 0
-    tensor_list = []  # list of tensors
-
-    # turn str to byte and get the max byte size
-    for sample in str_list:
-        tensor_list.append(torch.ByteTensor(list(bytes(sample, 'utf8'))))
-        max_l = max(tensor_list[-1].size()[0], max_l)
-
-    # max_l will always be 1 and since the number of chars in a move notation can be up to 7 we take 8 for smoother
-    # calculations
-    input_dimension = [8, max_l]
-    # turn the tensors into 1 tensor of uint8
-    proc_tensor = torch.zeros(input_dimension, dtype=torch.float)  # processed tensor
-    for i, tensor in enumerate(tensor_list):
-        proc_tensor[i, 0:tensor.size()[0]] = tensor
+    for i in range(len(string)):
+        char = string[i]
+        # getting the unicode of a char
+        char_as_bytes = ord(char)
+        # adding the encoded char to the tensor as a float
+        proc_tensor[i] = float(char_as_bytes)
 
     return proc_tensor
