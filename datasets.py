@@ -10,9 +10,9 @@ from torch.utils.data import Dataset
 
 
 class ChessDataset(Dataset):
-    def __init__(self, img_dir, batch_size, iter_num, color, transform=None, target_transform=None):
+    def __init__(self, img_dir, color, transform=None, target_transform=None):
         # Get the file containing all white moves
-        self.data, self.labels = prepare_chess_data(img_dir, batch_size, iter_num)
+        self.data, self.labels = prepare_chess_data(img_dir)
         self.color = color
         self.transform = transform
         self.target_transform = target_transform
@@ -48,47 +48,33 @@ class ChessDataset(Dataset):
         return bit_image, dt.string_to_tensor(label)
 
 
-def prepare_chess_data(path: str, batch: int, iteration: int):
+def prepare_chess_data(path: str):
     """
     This function will convert a csv file into usable data
     :param path: path to the CSV file
-    :param batch: the number of games to be loaded
-    :param iteration: the number of batches/iterations which have already been conducted over the dataframe
     """
 
-    df = pd.read_csv("/path/to/games" + path)  # TODO: change this line depending on your own path
+    base_path = "/path/to/data/"
 
-    # create arrays with the according sizes  including the absolute size of the dataframe
-    bitboards = np.empty((batch, 12))
-    labels = []
+    bitboards = np.array(pd.read_csv(base_path + path, usecols=range(12)))
 
-    for i in range(batch):
-        if df.values[i] is None:
-            break
-
-        for j in range(12):
-            bitboards[i][j] = df.values[i + (iteration * batch)][j]
-
-        labels.append(df.values[i + (iteration * batch)][12])
+    labels = np.array(pd.read_csv(base_path + path, usecols=[12]))
 
     return bitboards, labels
 
 
-def init_chess_dataset(color: chess.COLORS, batch_size: int, iter_num: int) -> ChessDataset:
+def init_chess_dataset(color: chess.COLORS) -> ChessDataset:
     if color is not True and color is not False:
         raise ValueError(f"Variable color must be of type {chess.COLORS} but is of type {type(color)}!")
 
     if color:
         dataset = ChessDataset(black_games_csv,
-                               batch_size,
-                               iter_num,
                                color,
                                transform=dt.ToTensor())  # dt.RandomCrop(4) additionally
         return dataset
 
     elif not color:
         dataset = ChessDataset(white_games_csv,
-                               batch_size,
-                               iter_num, color,
+                               color,
                                transform=dt.ToTensor())
         return dataset
