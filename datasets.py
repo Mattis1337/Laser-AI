@@ -26,7 +26,7 @@ class ChessDataset(Dataset):
     def __getitem__(self, idx):
         label = self.labels[idx]
         byte_image = self.data[idx]
-        # 3 channels
+        # 12 channels
         bit_image = np.empty([12, 8, 8], np.float32)
 
         # transforming bitboards
@@ -54,7 +54,8 @@ def prepare_chess_data(path: str):
     :param path: path to the CSV file
     """
 
-    base_path = "/path/to/data/"
+    # change the base path based on where the CSV folder is located
+    base_path = "/path/to/folder/"
 
     bitboards = np.array(pd.read_csv(base_path + path, usecols=range(12)))
 
@@ -70,11 +71,11 @@ def init_chess_dataset(color: chess.COLORS) -> ChessDataset:
     if color:
         dataset = ChessDataset(black_games_csv,
                                color,
-                               transform=dt.ToTensor())  # dt.RandomCrop(4) additionally
+                               transform=dt.to_tensor)  # dt.RandomCrop(4) additionally
         return dataset
 
     elif not color:
         dataset = ChessDataset(white_games_csv,
                                color,
-                               transform=dt.ToTensor())
+                               transform=dt.to_tensor)
         return dataset

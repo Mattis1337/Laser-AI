@@ -11,19 +11,37 @@ import atexit
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
-    def __init__(self, batch_size):
+    def __init__(self):
+        """
+        The constructor of the neural network determines the topology of the network.
+        The parameters in channels are always fixed based off the number of output channels derived
+        from the layer before.
+
+        The following script calculates the number of input channels for fc1.
+
+        # calculate the input channel for fully connected layer 1
+        x, y = dataset.__getitem__(0)
+        conv1 = nn.Conv2d(12, 24, 5)
+        pool = nn.MaxPool2d(2, 2)
+        conv2 = nn.Conv2d(24, 32, 2)
+        x = conv1(x)
+        x = pool(x)
+        x = conv2(x)
+        print(x.shape)
+        # based of the dimension of 32x1x1 one can deduce that only 1 pooling layer is needed
+        """
         super().__init__()
-        # NOTE: these parameters are still up for optimization
-        self.conv1 = nn.Conv2d(batch_size, 6, 2)
+        # 12 input channels for 12 different piece types
+        self.conv1 = nn.Conv2d(12, 24, 5)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 2)
-        self.fc1 = nn.Linear(1, 120)  # this seems kinds sketchy...
+        self.conv2 = nn.Conv2d(24, 32, 2)
+        self.fc1 = nn.Linear(32*1*1, 120)  # this seems kinds sketchy...
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 8)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
+        x = F.relu(self.conv2(x))
         x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -51,13 +69,12 @@ def train(dataloader, model, criterion, optimizer):
 
         # forward + backward + optimize
         pred = model(inputs)
-        labels = labels.squeeze_()
         loss = criterion(pred, labels)
         loss.backward()
         optimizer.step()
 
         # statistics ...
-        if batch % 16 == 0:
+        if (batch+1) % 2000 == 0:
             loss, current = loss.item(), (batch + 1) * len(inputs)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
@@ -114,13 +131,13 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     """
 
     # batch size (adjust if training is too slow or the hardware is not good enough)
-    batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
+    # batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
-    train_dataloader = DataLoader(dataset, batch_size, shuffle=True, num_workers=4)
-    test_dataloader = DataLoader(dataset, batch_size, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(dataset, 8, shuffle=True, num_workers=4)
+    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
     # Initialising the module
-    model = NeuralNetwork(batch_size)
+    model = NeuralNetwork()
     print(model)
 
     # registering the exit handler with the right path
@@ -174,7 +191,7 @@ def generate_move(color, game_state):
     print(f"Using {hardware_device} device")
 
     # Initialising a model
-    model = NeuralNetwork(1).to(hardware_device)
+    model = NeuralNetwork().to(hardware_device)
 
     # Loading the correct state to the model
     if color == "white":
