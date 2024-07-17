@@ -128,18 +128,17 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
     print(f"[CSV] Created black outputs successfully in {black_moves_path}")
 
 
-# Uncomment to run the convert script
-# annotation.pgn_to_bitboards_snapshots()
-# print(get_pgn_paths(pgn_dir))
-# convert_multiple_pgns_to_csv(
-#    pgn_file_paths=get_pgn_paths(directory=pgn_dir),
-#    white_games_path=white_games_csv,
-#    black_games_path=black_games_csv
-# )
-
-# create_outputs(
-#    white_csv=white_games_csv,
-#    black_csv=black_games_csv,
-#    white_moves_path=white_moves_csv,
-#    black_moves_path=black_moves_csv
-# )
+fun create_csvs():
+    annotation.pgn_to_bitboards_snapshots()
+    print(get_pgn_paths(pgn_dir))
+    convert_multiple_pgns_to_csv(
+       pgn_file_paths=get_pgn_paths(directory=pgn_dir),
+       white_games_path=white_games_csv,
+       black_games_path=black_games_csv
+    )
+    create_outputs(
+       white_csv=white_games_csv,
+       black_csv=black_games_csv,
+       white_moves_path=white_moves_csv,
+       black_moves_path=black_moves_csv
+    )
