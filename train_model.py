@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import datasets
-import atexit
 
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
@@ -60,6 +59,7 @@ def train(dataloader, model, criterion, optimizer):
     """
 
     size = len(dataloader.dataset)
+    running_loss = 0.0
 
     for batch, data in enumerate(dataloader, 0):
         inputs, labels = data  # not adjusted for CUDA devices
@@ -74,47 +74,41 @@ def train(dataloader, model, criterion, optimizer):
         optimizer.step()
 
         # statistics ...
+        running_loss += loss
         if (batch+1) % 1000 == 0:
-            loss, current = loss.item(), (batch + 1) * len(inputs)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+            current = (batch + 1) * len(inputs)
+            print(f"loss: {running_loss / (dataloader.batch_size * 1000):>7f}  [{current:>5d}/{size:>5d}]")
+            running_loss = 0.0
 
     print("Epoch done!")
 
 
 def test(dataloader, model):
     """
-    Testing the accuracy of a given model
+    Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
+    digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
-    :param device: the device (e.g. cpu, cuda) which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
     """
 
-    correct = 0
-    total = 0
+    total = 0.0
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for data in dataloader:
             images, labels = data
             # calculate outputs by running images through the network
             outputs = model(images)
-            # the class with the highest energy is what we choose as prediction
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            t_out_error = 0.0
+            for i in range(8):
+                out = float(outputs[0][i])
+                tar = float(labels[0][i])
+                t_out_error += abs(out - tar)
 
-    print(f'Accuracy of the network: {100 * correct // total} %')
+            total += (t_out_error/8)
 
+        total = total / (dataloader.batch_size * dataloader.__len__())
 
-def exit_handler(model, save_file):
-    """
-    Saving the state of the model when process is manually stopped so that you won't have to wait out
-    the whole training process before train_module finishes.
-    :param model: the model whose state shall be saved
-    :param save_file: the file in which the model state shall be saved
-    """
-
-    torch.save(model.state_dict(), save_file)
-    print(f"Saved PyTorch Current Model State to {save_file}")
+    print(f'Inaccuracy of the network: {total}')
 
 
 # full iterations training
@@ -138,11 +132,12 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
 
     # registering the exit handler with the right path
     # the enum COLOR of the chess library is true when it is white
+    # loading the model weights accordingly
     if dataset.__color__() is True:
-        atexit.register(exit_handler, model, "white_model.pth")
+        model.load_state_dict(torch.load('white_model.pth'))
 
     elif dataset.__color__() is False:
-        atexit.register(exit_handler, model, "black_model.pth")
+        model.load_state_dict(torch.load('black_model.pth'))
 
     else:
         raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
@@ -157,15 +152,27 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer)
+
+        # saving model after every epoch
+        if dataset.__color__() is True:
+            torch.save(model.state_dict(), 'white_model.pth')
+            print(f"Saved PyTorch Current Model State to white_model.pth")
+
+        elif dataset.__color__() is False:
+            torch.save(model.state_dict(), 'black_model.pth')
+            print(f"Saved PyTorch Current Model State to black_model.pth")
+
         test(test_dataloader, model)
 
     print("Done!")
 
     # Saving the models state to the correct file
-    if dataset.__color__ == c.WHITE:
-        exit_handler(model, "white_model.pth")
-    elif not dataset.__color__ == c.BLACK:
-        exit_handler(model, "black_model.pth")
+    if dataset.__color__() is True:
+        torch.save(model.state_dict(), 'white_model.pth')
+        print(f"Saved PyTorch Current Model State to white_model.pth")
+    elif not dataset.__color__() is False:
+        torch.save(model.state_dict(), 'black_model.pth')
+        print(f"Saved PyTorch Current Model State to black_model.pth")
 
 
 # TODO: generate a move to a given position by initialising a model with the according weights
