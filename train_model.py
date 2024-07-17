@@ -75,9 +75,9 @@ def train(dataloader, model, criterion, optimizer):
 
         # statistics ...
         running_loss += loss
-        if (batch+1) % 1000 == 0:
+        if (batch+1) % 2000 == 0:
             current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * 1000):>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {running_loss / (dataloader.batch_size * 2000):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
 
     print("Epoch done!")
@@ -112,12 +112,13 @@ def test(dataloader, model):
 
 
 # full iterations training
-def train_chess_model(dataset: datasets.ChessDataset) -> None:
+def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     """
     This function will train a neural network by creating an instance of
     the neural network class loading the according weights onto it and then
     using the given dataset to train.
     :param dataset: instance of a custom dataset class
+    :param epochs: number of epochs of training
     """
 
     # batch size (adjust if training is too slow or the hardware is not good enough)
@@ -126,28 +127,40 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
+    # loading the last checkpoint
+    state = load_model(dataset.__color__())
+
     # loading the model
-    model = load_model(dataset.__color__())
+    model = NeuralNetwork()
+    model.load_state_dict(state['model_state_dict'])
+    # setting model into training mode
+    model.train()
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+    optimizer.load_state_dict(state['optimizer_state_dict'])
+
+    last_epoch = state['epoch']
 
     # Train the network for the set epoch size
-    epochs = 10
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer)
 
-        # saving model after every epoch
-        save_trained_model(dataset.__color__(), model)
+        if (epoch+1) % 20 == 0:
+            # testing the model after 10 epochs
+            test(test_dataloader, model)
+            # saving model after 20 epochs
+            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
 
-        test(test_dataloader, model)
+    # testing the model after all epochs
+    test(test_dataloader, model)
 
     print("Done!")
 
     # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model)
+    save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
 
 
 # TODO: generate a move to a given position by initialising a model with the according weights
@@ -160,14 +173,17 @@ def generate_move(color, game_state):
     """
 
     # loading the model
-    model = load_model(color)
+    state = load_model(color)
+
+    model = NeuralNetwork()
+    model.load_state_dict(state['model_state_dict'])
+    model.eval()
 
     classes = []  # Saves all possible outputs for the nn
 
     path = 'moves.csv'  # Personal path to the file with all moves for a color
     # TODO: depending on the color of the dataset load the moves csv of that color
 
-    model.eval()
     x = game_state  # Game state must be the same data type the network trains with
 
     with torch.no_grad():
@@ -183,31 +199,38 @@ def load_model(color):
     the weights to the specified color of that model.
     :param color: specifies what weights should be loaded
     """
-    model = NeuralNetwork()
 
     if color is True:
-        model.load_state_dict(torch.load('white_model.pth'))
+        state = torch.load('white_model.pth')
 
     elif color is False:
-        model.load_state_dict(torch.load('black_model.pth'))
+        state = torch.load('black_model.pth')
 
     else:
         raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
                          f"but {color} was given.")
 
-    return model
+    return state
 
 
-def save_trained_model(color, model):
+def save_trained_model(color, model, epoch, optimizer):
     """
     Saving a NeuralNetwork model after training in a specified file
     based off the color.
     :param color: specifies which save file should be used
     :param model: the trained model which should be saved
+    :param epoch: what epoch training was left on
+    :param optimizer:  the  adjusted optimizer which was used
     """
     if color is True:
-        torch.save(model.state_dict(), 'white_model.pth')
+        torch.save({'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()},
+                   'white_model.pth')
         print(f"Saved PyTorch Current Model State to white_model.pth")
     elif color is False:
-        torch.save(model.state_dict(), 'black_model.pth')
+        torch.save({'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()},
+                   'black_model.pth')
         print(f"Saved PyTorch Current Model State to black_model.pth")
