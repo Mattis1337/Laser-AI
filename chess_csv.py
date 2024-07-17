@@ -4,7 +4,6 @@ import pandas as pd
 
 import chess_annotation as annotation
 
-
 # the directory containing chess game representations in PGN format
 pgn_dir = r"Games"
 # the paths to save the training data to
@@ -47,8 +46,20 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
             if any(bitboard is None for bitboard in state):
                 continue
 
+            # every bitboard has its own column
             data = {
-                'bitboards': state,
+                'bitboards_wP': state[0],
+                'bitboards_wN': state[1],
+                'bitboards_wB': state[2],
+                'bitboards_wR': state[3],
+                'bitboards_wQ': state[4],
+                'bitboards_wK': state[5],
+                'bitboards_bP': state[6],
+                'bitboards_bN': state[7],
+                'bitboards_bB': state[8],
+                'bitboards_bR': state[9],
+                'bitboards_bQ': state[10],
+                'bitboards_bK': state[11],
                 'move': moves[i],
             }
 
@@ -98,7 +109,7 @@ def create_one_output(game_csv: str, save_path: str):
     :param save_path: The path where the new CSV file should be saved at
     """
     games = pd.read_csv(game_csv)
-    moves = games.iloc[:, 1].drop_duplicates()    # gets the second column and removes duplicate moves
+    moves = games.iloc[:, 1].drop_duplicates()  # gets the second column and removes duplicate moves
     moves.to_csv(save_path, header=False, index=False)
 
 
@@ -117,17 +128,17 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
     print(f"[CSV] Created black outputs successfully in {black_moves_path}")
 
 
-# annotation.pgn_to_bitboards_snapshots()
-# print(get_pgn_paths(pgn_dir))
-convert_multiple_pgns_to_csv(
-    pgn_file_paths=get_pgn_paths(directory=pgn_dir),
-    white_games_path=white_games_csv,
-    black_games_path=black_games_csv
-)
-
-create_outputs(
-    white_csv=white_games_csv,
-    black_csv=black_games_csv,
-    white_moves_path=white_moves_csv,
-    black_moves_path=black_moves_csv
-)
+fun create_csvs():
+    annotation.pgn_to_bitboards_snapshots()
+    print(get_pgn_paths(pgn_dir))
+    convert_multiple_pgns_to_csv(
+       pgn_file_paths=get_pgn_paths(directory=pgn_dir),
+       white_games_path=white_games_csv,
+       black_games_path=black_games_csv
+    )
+    create_outputs(
+       white_csv=white_games_csv,
+       black_csv=black_games_csv,
+       white_moves_path=white_moves_csv,
+       black_moves_path=black_moves_csv
+    )

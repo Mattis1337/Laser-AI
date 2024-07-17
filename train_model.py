@@ -1,181 +1,169 @@
+import chess as c
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
 
-import chess_annotation
-from datasets import WhiteMovesDataset, BlackMovesDataset
-import atexit
+import datasets
 
 
-# INITIALISING THE DATA
-
-# Initialising the data
-
-path_white_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_img'
-path_white_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/white_labels'
-path_black_img = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_img'
-path_black_labels = '/home/mattis/Documents/Jugend_Forscht_2023.24/finished_data/black_labels'
-
-# Getting training data:
-training_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
-training_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
-
-# Getting data for testing
-test_data_white = WhiteMovesDataset(path_white_labels, path_white_img, ToTensor)
-test_data_black = BlackMovesDataset(path_black_labels, path_black_img, ToTensor)
-
-
+# https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
-    """The Neural Network class"""
     def __init__(self):
+        """
+        The constructor of the neural network determines the topology of the network.
+        The parameters in channels are always fixed based off the number of output channels derived
+        from the layer before.
+
+        The following script calculates the number of input channels for fc1.
+
+        # calculate the input channel for fully connected layer 1
+        x, y = dataset.__getitem__(0)
+        conv1 = nn.Conv2d(12, 24, 5)
+        pool = nn.MaxPool2d(2, 2)
+        conv2 = nn.Conv2d(24, 32, 2)
+        x = conv1(x)
+        x = pool(x)
+        x = conv2(x)
+        print(x.shape)
+        # based of the dimension of 32x1x1 one can deduce that only 1 pooling layer is needed
+        """
         super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
+        # 12 input channels for 12 different piece types
+        self.conv1 = nn.Conv2d(12, 24, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(24, 32, 2)
+        self.fc1 = nn.Linear(32*1*1, 120)  # this seems kinds sketchy...
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 8)
 
     def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        x = self.pool(F.relu(self.conv1(x)))
+        x = F.relu(self.conv2(x))
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
 
 
-def train(dataloader, device, model, loss_fn, optimizer):
+# Single iteration training
+def train(dataloader, model, criterion, optimizer):
     """
     Training a chess model depending on the color
     :param dataloader: the dataloader containing the white/black moves which shall be used for training
-    :param device: the device (e.g. cpu, cuda) which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
-    :param loss_fn: loss function
+    :param criterion: loss function
     :param optimizer: optimizer
     """
 
     size = len(dataloader.dataset)
-    model.train()
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to(device)
+    running_loss = 0.0
 
-        # Compute prediction error
-        pred = model(X)
-        loss = loss_fn(pred, y)
+    for batch, data in enumerate(dataloader, 0):
+        inputs, labels = data  # not adjusted for CUDA devices
 
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
+        # zero the parameter gradient
         optimizer.zero_grad()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), (batch + 1) * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+        # forward + backward + optimize
+        pred = model(inputs)
+        loss = criterion(pred, labels)
+        loss.backward()
+        optimizer.step()
+
+        # statistics ...
+        running_loss += loss
+        if (batch+1) % 2000 == 0:
+            current = (batch + 1) * len(inputs)
+            print(f"loss: {running_loss / (dataloader.batch_size * 2000):>7f}  [{current:>5d}/{size:>5d}]")
+            running_loss = 0.0
+
+    print("Epoch done!")
 
 
-def test(dataloader, device, model, loss_fn,):
+def test(dataloader, model):
     """
-    Testing the accuracy of a given model
+    Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
+    digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
-    :param device: the device (e.g. cpu, cuda) which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
-    :param loss_fn: loss function
     """
 
-    for X, y in dataloader:
-        print(f"Shape of X [N, C, H, W]: {X.shape}")
-        print(f"Shape of y: {y.shape} {y.dtype}")
-        break
-
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
+    total = 0.0
+    # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        for data in dataloader:
+            images, labels = data
+            # calculate outputs by running game states through the network
+            outputs = model(images)
+            t_out_error = 0.0
+            for i in range(8):
+                out = float(outputs[0][i])
+                tar = float(labels[0][i])
+                t_out_error += abs(out - tar)
+
+            total += (t_out_error/8)
+
+        total = total / (dataloader.batch_size * dataloader.__len__())
+
+    print(f'Inaccuracy of the network: {total}')
 
 
-def exit_handler(model, save_file):
-    """
-    Saving the state of the model when process is manually stopped so that you won't have to wait out
-    the whole training process before train_module finishes.
-    :param model: the model whose state shall be saved
-    :param save_file: the file in which the model state shall be saved
-    """
-
-    torch.save(model.state_dict(), save_file)
-    print(f"Saved PyTorch Current Model State to {save_file}")
-
-
-def create_chess_model(dataset):
+# full iterations training
+def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     """
     This function will train a neural network by creating an instance of
     the neural network class loading the according weights onto it and then
     using the given dataset to train.
     :param dataset: instance of a custom dataset class
+    :param epochs: number of epochs of training
     """
 
     # batch size (adjust if training is too slow or the hardware is not good enough)
-    batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
+    # batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
-    train_dataloader = DataLoader(dataset, batch_size)
-    test_dataloader = DataLoader(dataset, batch_size)
+    train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
+    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
-    # Get cpu, gpu or mps device for training.
-    hardware_device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    print(f"Using {hardware_device} device")
+    # loading the last checkpoint
+    state = load_model(dataset.__color__())
 
-    # Initialising the module
-    model = NeuralNetwork().to(hardware_device)
-    print(model)
-
-    # registering the exit handler with the right path
-    if isinstance(dataset, WhiteMovesDataset):
-        atexit.register(exit_handler, model, "white_model.pth")
-
-    elif isinstance(dataset, BlackMovesDataset):
-        atexit.register(exit_handler, model, "black_model.pth")
-
-    else:
-        raise ValueError("Dataset must be either of the instance of white or black but neither was given.")
+    # loading the model
+    model = NeuralNetwork()
+    model.load_state_dict(state['model_state_dict'])
+    # setting model into training mode
+    model.train()
 
     # Setting the module parameters
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+    optimizer.load_state_dict(state['optimizer_state_dict'])
+
+    last_epoch = state['epoch']
 
     # Train the network for the set epoch size
-    epochs = 5
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
-        train(train_dataloader, hardware_device, model, loss_fn, optimizer)
-        test(test_dataloader, hardware_device, model, loss_fn)
+    for epoch in range(epochs):
+        print(f"Epoch {epoch+1}\n-------------------------------")
+        train(train_dataloader, model, criterion, optimizer)
+
+        if (epoch+1) % 20 == 0:
+            # testing the model after 10 epochs
+            test(test_dataloader, model)
+            # saving model after 20 epochs
+            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
+
+    # testing the model after all epochs
+    test(test_dataloader, model)
 
     print("Done!")
 
-    # Saving the models state to the correct file
-    if isinstance(dataset, WhiteMovesDataset):
-        torch.save(model.state_dict(), "model_white.pth")
-        print("Saved PyTorch Model State to model_white.pth")
-    else:
-        torch.save(model.state_dict(), "model_white.pth")
-        print("Saved PyTorch Model State to model_white.pth")
+    # saving the model after it finished training
+    save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
 
 
+# TODO: generate a move to a given position by initialising a model with the according weights
 def generate_move(color, game_state):
     """
     When using the AI this function will return the move for a given
@@ -183,40 +171,66 @@ def generate_move(color, game_state):
     :param color: what type of AI is to be trained
     :param game_state: the state of the game which a move is to be generated for
     """
-    # Get cpu, gpu or mps device for training.
-    hardware_device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    print(f"Using {hardware_device} device")
 
-    # Initialising a model
-    model = NeuralNetwork().to(hardware_device)
+    # loading the model
+    state = load_model(color)
 
-    # Loading the correct state to the model
-    if color == "white":
-        model.load_state_dict(torch.load("model_white.pth"))
-
-    elif color == "black":
-        model.load_state_dict(torch.load("model_black.pth"))
+    model = NeuralNetwork()
+    model.load_state_dict(state['model_state_dict'])
+    model.eval()
 
     classes = []  # Saves all possible outputs for the nn
 
-    path = '/home/mattis/Documents/Jugend_Forscht_2023.24/all_moves.csv'  # Personal path to the file with all moves
+    path = 'moves.csv'  # Personal path to the file with all moves for a color
+    # TODO: depending on the color of the dataset load the moves csv of that color
 
-    with open(path, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            classes.append(annotation_converter.move_filter(line))
-
-    model.eval()
     x = game_state  # Game state must be the same data type the network trains with
 
     with torch.no_grad():
-        x = x.to(hardware_device)
+        x = x
         pred = model(x)
         predicted = classes[pred[0].argmax(0)]
         print(f'Predicted: "{predicted}"')
+
+
+def load_model(color):
+    """
+    Initialise a NeuralNetwork model using a .pth file to load
+    the weights to the specified color of that model.
+    :param color: specifies what weights should be loaded
+    """
+
+    if color is True:
+        state = torch.load('white_model.pth')
+
+    elif color is False:
+        state = torch.load('black_model.pth')
+
+    else:
+        raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
+                         f"but {color} was given.")
+
+    return state
+
+
+def save_trained_model(color, model, epoch, optimizer):
+    """
+    Saving a NeuralNetwork model after training in a specified file
+    based off the color.
+    :param color: specifies which save file should be used
+    :param model: the trained model which should be saved
+    :param epoch: what epoch training was left on
+    :param optimizer:  the  adjusted optimizer which was used
+    """
+    if color is True:
+        torch.save({'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()},
+                   'white_model.pth')
+        print(f"Saved PyTorch Current Model State to white_model.pth")
+    elif color is False:
+        torch.save({'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict()},
+                   'black_model.pth')
+        print(f"Saved PyTorch Current Model State to black_model.pth")
