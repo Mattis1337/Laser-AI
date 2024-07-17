@@ -96,7 +96,7 @@ def test(dataloader, model):
     with torch.no_grad():
         for data in dataloader:
             images, labels = data
-            # calculate outputs by running images through the network
+            # calculate outputs by running game states through the network
             outputs = model(images)
             t_out_error = 0.0
             for i in range(8):
@@ -126,22 +126,8 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
-    # Initialising the module
-    model = NeuralNetwork()
-    print(model)
-
-    # registering the exit handler with the right path
-    # the enum COLOR of the chess library is true when it is white
-    # loading the model weights accordingly
-    if dataset.__color__() is True:
-        model.load_state_dict(torch.load('white_model.pth'))
-
-    elif dataset.__color__() is False:
-        model.load_state_dict(torch.load('black_model.pth'))
-
-    else:
-        raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
-                         f"but {dataset.__color__()} was given.")
+    # loading the model
+    model = load_model(dataset.__color__())
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
@@ -154,25 +140,14 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
         train(train_dataloader, model, criterion, optimizer)
 
         # saving model after every epoch
-        if dataset.__color__() is True:
-            torch.save(model.state_dict(), 'white_model.pth')
-            print(f"Saved PyTorch Current Model State to white_model.pth")
-
-        elif dataset.__color__() is False:
-            torch.save(model.state_dict(), 'black_model.pth')
-            print(f"Saved PyTorch Current Model State to black_model.pth")
+        save_trained_model(dataset.__color__(), model)
 
         test(test_dataloader, model)
 
     print("Done!")
 
-    # Saving the models state to the correct file
-    if dataset.__color__() is True:
-        torch.save(model.state_dict(), 'white_model.pth')
-        print(f"Saved PyTorch Current Model State to white_model.pth")
-    elif not dataset.__color__() is False:
-        torch.save(model.state_dict(), 'black_model.pth')
-        print(f"Saved PyTorch Current Model State to black_model.pth")
+    # saving the model after it finished training
+    save_trained_model(dataset.__color__(), model)
 
 
 # TODO: generate a move to a given position by initialising a model with the according weights
@@ -183,25 +158,9 @@ def generate_move(color, game_state):
     :param color: what type of AI is to be trained
     :param game_state: the state of the game which a move is to be generated for
     """
-    # this is unnecessary for now
-    hardware_device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-    print(f"Using {hardware_device} device")
 
-    # Initialising a model
-    model = NeuralNetwork().to(hardware_device)
-
-    # Loading the correct state to the model
-    if color == "white":
-        model.load_state_dict(torch.load("model_white.pth"))
-
-    elif color == "black":
-        model.load_state_dict(torch.load("model_black.pth"))
+    # loading the model
+    model = load_model(color)
 
     classes = []  # Saves all possible outputs for the nn
 
@@ -212,7 +171,43 @@ def generate_move(color, game_state):
     x = game_state  # Game state must be the same data type the network trains with
 
     with torch.no_grad():
-        x = x.to(hardware_device)
+        x = x
         pred = model(x)
         predicted = classes[pred[0].argmax(0)]
         print(f'Predicted: "{predicted}"')
+
+
+def load_model(color):
+    """
+    Initialise a NeuralNetwork model using a .pth file to load
+    the weights to the specified color of that model.
+    :param color: specifies what weights should be loaded
+    """
+    model = NeuralNetwork()
+
+    if color is True:
+        model.load_state_dict(torch.load('white_model.pth'))
+
+    elif color is False:
+        model.load_state_dict(torch.load('black_model.pth'))
+
+    else:
+        raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
+                         f"but {color} was given.")
+
+    return model
+
+
+def save_trained_model(color, model):
+    """
+    Saving a NeuralNetwork model after training in a specified file
+    based off the color.
+    :param color: specifies which save file should be used
+    :param model: the trained model which should be saved
+    """
+    if color is True:
+        torch.save(model.state_dict(), 'white_model.pth')
+        print(f"Saved PyTorch Current Model State to white_model.pth")
+    elif color is False:
+        torch.save(model.state_dict(), 'black_model.pth')
+        print(f"Saved PyTorch Current Model State to black_model.pth")
