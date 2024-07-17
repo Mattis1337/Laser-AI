@@ -128,7 +128,7 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
     print(f"[CSV] Created black outputs successfully in {black_moves_path}")
 
 
-fun create_csvs():
+def create_csvs():
     annotation.pgn_to_bitboards_snapshots()
     print(get_pgn_paths(pgn_dir))
     convert_multiple_pgns_to_csv(
