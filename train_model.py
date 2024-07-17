@@ -74,14 +74,14 @@ def train(dataloader, model, criterion, optimizer):
         optimizer.step()
 
         # statistics ...
-        if (batch+1) % 2000 == 0:
+        if (batch+1) % 1000 == 0:
             loss, current = loss.item(), (batch + 1) * len(inputs)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
     print("Epoch done!")
 
 
-def test(dataloader, device, model, criterion,):
+def test(dataloader, model):
     """
     Testing the accuracy of a given model
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
@@ -89,24 +89,20 @@ def test(dataloader, device, model, criterion,):
     :param model: a model object instantiated from NeuralNetwork
     """
 
-    for X, y in dataloader:
-        print(f"Shape of X [N, C, H, W]: {X.shape}")
-        print(f"Shape of y: {y.shape} {y.dtype}")
-        break
-
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    model.eval()
-    test_loss, correct = 0, 0
+    correct = 0
+    total = 0
+    # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += criterion(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+        for data in dataloader:
+            images, labels = data
+            # calculate outputs by running images through the network
+            outputs = model(images)
+            # the class with the highest energy is what we choose as prediction
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    print(f'Accuracy of the network: {100 * correct // total} %')
 
 
 def exit_handler(model, save_file):
@@ -133,7 +129,7 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     # batch size (adjust if training is too slow or the hardware is not good enough)
     # batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
-    train_dataloader = DataLoader(dataset, 8, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
     # Initialising the module
@@ -161,7 +157,7 @@ def train_chess_model(dataset: datasets.ChessDataset) -> None:
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer)
-        # test(test_dataloader, model, criterion, optimizer)
+        test(test_dataloader, model)
 
     print("Done!")
 
