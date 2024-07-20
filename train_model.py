@@ -163,13 +163,13 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
 
 
-# TODO: generate a move to a given position by initialising a model with the according weights
-def generate_move(color, game_state):
+# TODO: interpret the output given by the model
+def generate_move(color, dataset: datasets.ChessTestData):
     """
     When using the AI this function will return the move for a given
     game state.
     :param color: what type of AI is to be trained
-    :param game_state: the state of the game which a move is to be generated for
+    :param dataset: a test dataset containing only 1 game state
     """
 
     # loading the model
@@ -179,18 +179,13 @@ def generate_move(color, game_state):
     model.load_state_dict(state['model_state_dict'])
     model.eval()
 
-    classes = []  # Saves all possible outputs for the nn
-
-    path = 'moves.csv'  # Personal path to the file with all moves for a color
-    # TODO: depending on the color of the dataset load the moves csv of that color
-
-    x = game_state  # Game state must be the same data type the network trains with
+    loader = DataLoader(dataset, batch_size=1)
 
     with torch.no_grad():
-        x = x
-        pred = model(x)
-        predicted = classes[pred[0].argmax(0)]
-        print(f'Predicted: "{predicted}"')
+        for data in loader:
+            x, y = data
+            pred = model(x)
+            print(f'Predicted: "{pred}"')
 
 
 def load_model(color):
