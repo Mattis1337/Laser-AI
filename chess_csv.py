@@ -109,7 +109,7 @@ def create_one_output(game_csv: str, save_path: str):
     :param save_path: The path where the new CSV file should be saved at
     """
     games = pd.read_csv(game_csv)
-    moves = games.iloc[:, 1].drop_duplicates()  # gets the second column and removes duplicate moves
+    moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
     moves.to_csv(save_path, header=False, index=False)
 
 
@@ -129,7 +129,7 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
 
 
 def create_csvs():
-    annotation.pgn_to_bitboards_snapshots()
+    # annotation.pgn_to_bitboards_snapshots()
     print(get_pgn_paths(pgn_dir))
     convert_multiple_pgns_to_csv(
        pgn_file_paths=get_pgn_paths(directory=pgn_dir),
