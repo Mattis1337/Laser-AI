@@ -1,5 +1,12 @@
+import chess
 import torch
 import numpy as np
+import pandas as pd
+
+# own files
+from chess_csv import black_moves_csv, white_moves_csv, local_csv_path
+from chess_annotation import bitboard_to_byteboard
+import datasets
 
 
 #  https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html
@@ -42,21 +49,59 @@ def to_tensor(sample):
     return torch.from_numpy(sample)
 
 
-def string_to_tensor(str_list):
+def transform_bitboards(bitboards):
+    # 12 channels
+    byteboard = np.empty([12, 8, 8], np.float32)
+
+    # transforming bitboards
+    for i in range(12):
+        temp_holder = bitboard_to_byteboard(bitboards[i])
+        c = 0
+
+        for j in range(64):
+            if j % 8 == 0 and j != 0:
+                c += 1
+            byteboard[i][c][j % 8] = temp_holder[j]
+    return byteboard
+
+
+# TODO: new function which decodes the targets
+def targets_to_tensor(color) -> dict:
     # setting the input dimensions to a max of 8 chars
-    input_dimension = [8*1]
-    # parsing the only item in the list
-    string = str_list[0]
-    # initialising the Tensor
-    proc_tensor = torch.zeros(input_dimension)
+    input_dimension = [datasets.get_output_length(color)]
+    targets = []
+    if type(color) is not bool:
+        raise ValueError(f"Expected type {chess.COLORS} but received type {type(color)}")
+    if color is True:
+        targets = pd.read_csv(local_csv_path + white_moves_csv, usecols=[0])
+    if color is False:
+        targets = pd.read_csv(local_csv_path + black_moves_csv, usecols=[0])
 
-    for i in range(len(string)):
-        char = string[i]
-        # getting the unicode of a char
-        char_as_bytes = ord(char)
-        # adding the encoded char to the tensor as a float
-        proc_tensor[i] = char_as_bytes
+    target_tensor_dict = {}
 
-    proc_tensor = proc_tensor
+    targets = targets.to_numpy()
 
-    return proc_tensor.to(torch.float)
+    for i, target in enumerate(targets):
+        target = target[0]
+        # initialise the output for the network using zeros
+        tensor = torch.zeros(input_dimension)
+        # setting the target to 1 at index for current label
+        tensor[i] = 1
+        # changing tensor to torch.float32
+        tensor = tensor.to(torch.float32)
+        # adding the target tensor with the key of the fitting move
+        target_tensor_dict[target] = tensor
+
+    return target_tensor_dict
+
+
+def tensor_to_targets(tensor: torch.Tensor, targets: dict, annotation=False, amount_targets=1):
+    """
+    Return the fitting tensor (for further calculations) or the fitting notation (for generating moves)
+    to a given tensor based off a given dictionary.
+    :param tensor: input tensor with non integer values
+    :param targets: a dictionary created by targets_to_tensor containing fitting notation to a possible target tensor
+    :param annotation: whether the output should be the notation or the tensor (by default the tensor)
+    :param amount_targets: how big the amount of highest ranking annotations should be
+    """
+    ...

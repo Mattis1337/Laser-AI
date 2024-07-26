@@ -125,5 +125,5 @@ def move_filter(move):
     return str.strip(move)
 
 
-def bitboard_to_byteboard(bitboard) -> list[int]:
+def bitboard_to_byteboard(bitboard: int) -> list[int]:
     return [int(bit) for bit in format(int(bitboard), '064b')]  # formats int to str(bits) to list[int]

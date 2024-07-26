@@ -1,16 +1,20 @@
 import chess as c
+import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+# importing own files
+import chess_annotation
 import datasets
+import data_transformations as dt
 
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, outputs=8):  # edit after finalization
         """
         The constructor of the neural network determines the topology of the network.
         The parameters in channels are always fixed based off the number of output channels derived
@@ -34,14 +38,15 @@ class NeuralNetwork(nn.Module):
         self.conv1 = nn.Conv2d(12, 24, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(24, 32, 2)
-        self.fc1 = nn.Linear(32*1*1, 120)  # this seems kinds sketchy...
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 8)
+        self.fc1 = nn.Linear(32, 120)  # this seems kinds sketchy...
+        self.fc2 = nn.Linear(120, 420)
+        self.fc3 = nn.Linear(420, outputs)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
         x = F.relu(self.conv2(x))
         x = torch.flatten(x, 1)  # flatten all dimensions except batch
+        print(x.size())
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -75,9 +80,9 @@ def train(dataloader, model, criterion, optimizer):
 
         # statistics ...
         running_loss += loss
-        if (batch+1) % 2000 == 0:
+        if (batch+1) % 1000 == 0:
             current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * 2000):>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {running_loss / (dataloader.batch_size * 1000):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
 
     print("Epoch done!")
@@ -92,23 +97,20 @@ def test(dataloader, model):
     """
 
     total = 0.0
+    possible_targets = datasets.get_output_length(dataloader.dataset.__color__())
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for data in dataloader:
-            images, labels = data
+            image, label = data
             # calculate outputs by running game states through the network
-            outputs = model(images)
-            t_out_error = 0.0
-            for i in range(8):
-                out = float(outputs[0][i])
-                tar = float(labels[0][i])
-                t_out_error += abs(out - tar)
+            pred = model(image)
 
-            total += (t_out_error/8)
+            # TODO: implement evaluation based on the output of the following function
+            pred = dt.tensor_to_targets(pred, dataloader.dataset.__gettargets__())
 
-        total = total / (dataloader.batch_size * dataloader.__len__())
-
-    print(f'Inaccuracy of the network: {total}')
+            if pred == label:
+                total += 1.0
+    print(f'Accuracy of the network: {total/dataloader.dataset.__len__()}%')
 
 
 # full iterations training
@@ -124,24 +126,24 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     # batch size (adjust if training is too slow or the hardware is not good enough)
     # batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
 
-    train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
     # loading the last checkpoint
-    state = load_model(dataset.__color__())
+    # state = load_model(dataset.__color__())
 
     # loading the model
-    model = NeuralNetwork()
-    model.load_state_dict(state['model_state_dict'])
+    model = NeuralNetwork(datasets.get_output_length(dataset.__color__()))
+    # model.load_state_dict(state['model_state_dict'])
     # setting model into training mode
     model.train()
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
-    optimizer.load_state_dict(state['optimizer_state_dict'])
+    # optimizer.load_state_dict(state['optimizer_state_dict'])
 
-    last_epoch = state['epoch']
+    # last_epoch = state['epoch']
 
     # Train the network for the set epoch size
     for epoch in range(epochs):
@@ -152,7 +154,7 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
             # testing the model after 10 epochs
             test(test_dataloader, model)
             # saving model after 20 epochs
-            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
+            # save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
 
     # testing the model after all epochs
     test(test_dataloader, model)
@@ -160,32 +162,39 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     print("Done!")
 
     # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
+    # save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
 
 
 # TODO: interpret the output given by the model
-def generate_move(color, dataset: datasets.ChessTestData):
+def generate_move(color, fen):
     """
     When using the AI this function will return the move for a given
     game state.
     :param color: what type of AI is to be trained
-    :param dataset: a test dataset containing only 1 game state
+    :param fen: current game state
     """
 
     # loading the model
     state = load_model(color)
 
-    model = NeuralNetwork()
-    model.load_state_dict(state['model_state_dict'])
+    model = NeuralNetwork(datasets.get_output_length(color))
+    # model.load_state_dict(state['model_state_dict'])
     model.eval()
 
-    loader = DataLoader(dataset, batch_size=1)
+    # turning the fen into bitboards
+    bbs = chess_annotation.fen_to_bitboards(fen)
+    bbs = np.array(bbs)
+    # bitboards need to be cast to an array for compatibility
+    x = dt.transform_bitboards(bbs)
+    # adjusting the dimension of the input to match with batch (took me 4 hours to fix...)
+    x_ = np.empty([1, 12, 8, 8], dtype=np.float32)
+    x_[0] = x
+    # turning the array into tensor
+    x = dt.to_tensor(x_)
 
     with torch.no_grad():
-        for data in loader:
-            x, y = data
-            pred = model(x)
-            print(f'Predicted: "{pred}"')
+        pred = model(x)
+        print(f'Predicted: "{pred}"')
 
 
 def load_model(color):
