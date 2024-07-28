@@ -46,7 +46,6 @@ class NeuralNetwork(nn.Module):
         x = self.pool(F.relu(self.conv1(x)))
         x = F.relu(self.conv2(x))
         x = torch.flatten(x, 1)  # flatten all dimensions except batch
-        print(x.size())
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -96,21 +95,28 @@ def test(dataloader, model):
     :param model: a model object instantiated from NeuralNetwork
     """
 
-    total = 0.0
-    possible_targets = datasets.get_output_length(dataloader.dataset.__color__())
+    total = 0
+    # possible_targets = datasets.get_output_length(dataloader.dataset.__color__())
+    color = dataloader.dataset.__color__()
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for data in dataloader:
+        for i, data in enumerate(dataloader):
             image, label = data
+            targets = dataloader.dataset.__gettargets__()
+
             # calculate outputs by running game states through the network
             pred = model(image)
 
-            # TODO: implement evaluation based on the output of the following function
-            pred = dt.tensor_to_targets(pred, dataloader.dataset.__gettargets__())
+            pred = dt.tensor_to_targets(pred, color, targets, amount_targets=1)
 
-            if pred == label:
-                total += 1.0
-    print(f'Accuracy of the network: {total/dataloader.dataset.__len__()}%')
+            if dt.compare_tensors(label[0], pred) is True:
+                total += 1
+
+            if (i+1) % 10000 == 0:
+                print(f'Successfully tested {i+1} randomly shuffled game states!')
+                break
+
+    print(f'Accuracy of the network: {total/100}%')
 
 
 # full iterations training
@@ -194,6 +200,7 @@ def generate_move(color, fen):
 
     with torch.no_grad():
         pred = model(x)
+        pred = dt.tensor_to_targets(pred, color, dt.targets_to_tensor(color), annotation=True)
         print(f'Predicted: "{pred}"')
 
 
