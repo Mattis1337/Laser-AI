@@ -7,7 +7,7 @@ import chess_annotation as annotation
 # the directory containing chess game representations in PGN format
 pgn_dir = r"Games"
 # your local directory containing the CSV/ folder
-local_csv_path = r"/home/mattis/development/"
+local_csv_path = r"/path/to/games/"
 # the paths to save the training data to
 white_games_csv = r"CSV/white_games.csv"
 black_games_csv = r"CSV/black_games.csv"
