@@ -15,10 +15,6 @@ print(r' __          ___           _______. _______ .______               ___   
 
 print("Laser-AI")
 
-# TODO: https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
-# configure the loading of changed output sizes
-# TODO: uncomment everything run twice and the its done
-
 dataset = datasets.init_chess_dataset(c.BLACK)
 
 board = c.Board()
