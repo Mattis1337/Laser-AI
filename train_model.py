@@ -1,16 +1,20 @@
 import chess as c
+import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+# importing own files
+import chess_annotation
 import datasets
+import data_transformations as dt
 
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, outputs):
         """
         The constructor of the neural network determines the topology of the network.
         The parameters in channels are always fixed based off the number of output channels derived
@@ -34,9 +38,9 @@ class NeuralNetwork(nn.Module):
         self.conv1 = nn.Conv2d(12, 24, 5)
         self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(24, 32, 2)
-        self.fc1 = nn.Linear(32*1*1, 120)  # this seems kinds sketchy...
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 8)
+        self.fc1 = nn.Linear(32, 120)  # this seems kinds sketchy...
+        self.fc2 = nn.Linear(120, 420)
+        self.fc3 = nn.Linear(420, outputs)
 
     def forward(self, x):
         x = self.pool(F.relu(self.conv1(x)))
@@ -75,9 +79,9 @@ def train(dataloader, model, criterion, optimizer):
 
         # statistics ...
         running_loss += loss
-        if (batch+1) % 2000 == 0:
+        if (batch+1) % 1000 == 0:
             current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * 2000):>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {running_loss / (dataloader.batch_size * 1000):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
 
     print("Epoch done!")
@@ -91,24 +95,28 @@ def test(dataloader, model):
     :param model: a model object instantiated from NeuralNetwork
     """
 
-    total = 0.0
+    total = 0
+    # possible_targets = datasets.get_output_length(dataloader.dataset.__color__())
+    color = dataloader.dataset.__color__()
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for data in dataloader:
-            images, labels = data
+        for i, data in enumerate(dataloader):
+            image, label = data
+            targets = dataloader.dataset.__gettargets__()
+
             # calculate outputs by running game states through the network
-            outputs = model(images)
-            t_out_error = 0.0
-            for i in range(8):
-                out = float(outputs[0][i])
-                tar = float(labels[0][i])
-                t_out_error += abs(out - tar)
+            pred = model(image)
 
-            total += (t_out_error/8)
+            pred = dt.tensor_to_targets(pred, color, targets, amount_targets=1)
 
-        total = total / (dataloader.batch_size * dataloader.__len__())
+            if dt.compare_tensors(label[0], pred) is True:
+                total += 1
 
-    print(f'Inaccuracy of the network: {total}')
+            if (i+1) % 10000 == 0:
+                print(f'Successfully tested {i+1} randomly shuffled game states!')
+                break
+
+    print(f'Accuracy of the network: {total/100}%')
 
 
 # full iterations training
@@ -121,25 +129,41 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     :param epochs: number of epochs of training
     """
 
-    # batch size (adjust if training is too slow or the hardware is not good enough)
-    # batch_size = dataset.__len__()  # Use datasets len() func to get the length of the whole data
+    # Reference for handling changing dimensions
+    # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
 
-    train_dataloader = DataLoader(dataset, 20, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
 
     # loading the last checkpoint
     state = load_model(dataset.__color__())
+    # casting the number of old outputs
+    old_outputs = state['output_size']
 
     # loading the model
-    model = NeuralNetwork()
-    model.load_state_dict(state['model_state_dict'])
-    # setting model into training mode
-    model.train()
+    model = NeuralNetwork(old_outputs)
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
+    # https://amarsaini.github.io/Optimizer-Benchmarks/
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
-    optimizer.load_state_dict(state['optimizer_state_dict'])
+
+    # checking if the output size has changed in between learning
+    if old_outputs != datasets.get_output_length(dataset.__color__()):
+        # change the dimension of the output
+        num_ftrs = model.fc3.in_features
+        model.fc3 = nn.Linear(num_ftrs, old_outputs)
+        # loading the pre-trained model with the old outputs
+        model.load_state_dict(state['model_state_dict'], strict=False)
+        # changing the model to new output size
+        model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(dataset.__color__()))
+    else:
+        # loading optimizer and model state only when the output size has not changed
+        optimizer.load_state_dict(state['optimizer_state_dict'])
+        model.load_state_dict(state['model_state_dict'])
+
+    # setting model into training mode
+    model.train()
 
     last_epoch = state['epoch']
 
@@ -149,9 +173,8 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
         train(train_dataloader, model, criterion, optimizer)
 
         if (epoch+1) % 20 == 0:
-            # testing the model after 10 epochs
+            # testing and saving the model after 20 epochs
             test(test_dataloader, model)
-            # saving model after 20 epochs
             save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
 
     # testing the model after all epochs
@@ -160,37 +183,39 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     print("Done!")
 
     # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model, last_epoch+epochs, optimizer)
+    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer)
 
 
-# TODO: generate a move to a given position by initialising a model with the according weights
-def generate_move(color, game_state):
+def generate_move(color, fen):
     """
     When using the AI this function will return the move for a given
     game state.
     :param color: what type of AI is to be trained
-    :param game_state: the state of the game which a move is to be generated for
+    :param fen: current game state
     """
 
     # loading the model
     state = load_model(color)
 
-    model = NeuralNetwork()
+    model = NeuralNetwork(datasets.get_output_length(color))
     model.load_state_dict(state['model_state_dict'])
     model.eval()
 
-    classes = []  # Saves all possible outputs for the nn
-
-    path = 'moves.csv'  # Personal path to the file with all moves for a color
-    # TODO: depending on the color of the dataset load the moves csv of that color
-
-    x = game_state  # Game state must be the same data type the network trains with
+    # turning the fen into bitboards
+    bbs = chess_annotation.fen_to_bitboards(fen)
+    bbs = np.array(bbs)
+    # bitboards need to be cast to an array for compatibility
+    x = dt.transform_bitboards(bbs)
+    # adjusting the dimension of the input to match with batch (took me 4 hours to fix...)
+    x_ = np.empty([1, 12, 8, 8], dtype=np.float32)
+    x_[0] = x
+    # turning the array into tensor
+    x = dt.to_tensor(x_)
 
     with torch.no_grad():
-        x = x
         pred = model(x)
-        predicted = classes[pred[0].argmax(0)]
-        print(f'Predicted: "{predicted}"')
+        pred = dt.tensor_to_targets(pred, color, dt.targets_to_tensor(color), annotation=True)
+        print(f'Predicted: "{pred}"')
 
 
 def load_model(color):
@@ -225,12 +250,14 @@ def save_trained_model(color, model, epoch, optimizer):
     if color is True:
         torch.save({'epoch': epoch,
                     'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict()},
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'output_size': datasets.get_output_length(color)},
                    'white_model.pth')
         print(f"Saved PyTorch Current Model State to white_model.pth")
     elif color is False:
         torch.save({'epoch': epoch,
                     'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict()},
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'output_size': datasets.get_output_length(color)},
                    'black_model.pth')
         print(f"Saved PyTorch Current Model State to black_model.pth")

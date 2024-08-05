@@ -6,6 +6,8 @@ import chess_annotation as annotation
 
 # the directory containing chess game representations in PGN format
 pgn_dir = r"Games"
+# your local directory containing the CSV/ folder
+local_csv_path = r"/path/to/games/"
 # the paths to save the training data to
 white_games_csv = r"CSV/white_games.csv"
 black_games_csv = r"CSV/black_games.csv"
@@ -108,9 +110,9 @@ def create_one_output(game_csv: str, save_path: str):
     :param game_csv: A CSV file containing mappings of board states and moves, created by convert_png_to_csv()
     :param save_path: The path where the new CSV file should be saved at
     """
-    games = pd.read_csv(game_csv)
-    moves = games.iloc[:, 1].drop_duplicates()  # gets the second column and removes duplicate moves
-    moves.to_csv(save_path, header=False, index=False)
+    games = pd.read_csv(local_csv_path + game_csv)
+    moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
+    moves.to_csv(local_csv_path + save_path, header=False, index=False)
 
 
 def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_moves_path: str):
@@ -128,8 +130,8 @@ def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_
     print(f"[CSV] Created black outputs successfully in {black_moves_path}")
 
 
-fun create_csvs():
-    annotation.pgn_to_bitboards_snapshots()
+def create_csvs():
+    # annotation.pgn_to_bitboards_snapshots()
     print(get_pgn_paths(pgn_dir))
     convert_multiple_pgns_to_csv(
        pgn_file_paths=get_pgn_paths(directory=pgn_dir),
