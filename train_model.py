@@ -69,7 +69,7 @@ def train(dataloader, model, criterion, optimizer):
         inputs, labels = data  # not adjusted for CUDA devices
 
         # zero the parameter gradient
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
         # forward + backward + optimize
         pred = model(inputs)
@@ -216,6 +216,8 @@ def generate_move(color, fen):
         pred = model(x)
         pred = dt.tensor_to_targets(pred, color, dt.targets_to_tensor(color), annotation=True)
         print(f'Predicted: "{pred}"')
+
+    return pred[0]
 
 
 def load_model(color):

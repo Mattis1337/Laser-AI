@@ -5,6 +5,7 @@ import chess as c
 # importing own files
 import datasets
 import train_model
+import interface
 
 print(r' __          ___           _______. _______ .______               ___       __ ' + '\n' +
       r'|  |        /   \         /       ||   ____||   _  \             /   \     |  |' + '\n' +
@@ -17,10 +18,8 @@ print("Laser-AI")
 
 dataset = datasets.init_chess_dataset(c.BLACK)
 
-board = c.Board()
-board.push_san("e4")
+interface.cli_interaction(c.BLACK)
 
-train_model.train_chess_model(dataset, 100)
-train_model.generate_move(c.BLACK, board.fen())
+# train_model.train_chess_model(dataset, 20)
 
 print("Goodbye")
