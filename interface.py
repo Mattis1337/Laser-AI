@@ -29,7 +29,7 @@ def cli_interaction_black():
         if board.is_checkmate():
             game_running = False
         # Generating the AIs move
-        pred = train_model.generate_move(c.BLACK, board.fen())
+        pred = get_network_move(board)
         board.push_san(pred)
         print(board)
         if board.is_checkmate():
@@ -47,12 +47,13 @@ def cli_interaction_white():
     print(board)
     while game_running:
         # Generating the AIs move
-        pred = train_model.generate_move(c.WHITE, board.fen())
+        pred = get_network_move(board)
         board.push_san(pred)
         print(board)
         if board.is_checkmate():
             game_running = False
             break
+
         # getting the users move
         move = get_valid_move(board)
         board.push(move)
@@ -83,3 +84,24 @@ def get_valid_move(board: c.Board):
             print("Invalid Move!")
 
     return move
+
+
+def get_network_move(board: c.Board, depth=1):
+    final_move = None
+
+    moves = train_model.generate_move(c.BLACK, board.fen(), amount_outputs=depth)
+    # check if any of the returned moves is legal
+    for m in moves:
+        # check if move is legal
+        legal_moves_lst = [board.san(m) for m in board.legal_moves]
+        if m in legal_moves_lst:
+            final_move = m
+
+    if final_move is None:
+        # if move is invalid repeat the process but add 1 more depth as output
+        get_network_move(board, depth+1)
+
+    # print the amount of moves which had to be generated
+    print(depth)
+    return final_move
+
