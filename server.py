@@ -12,7 +12,6 @@ app = FastAPI()
 
 class PredictRequest(BaseModel):
     fen: str
-    depth: int
 
 
 class MoveResponse(BaseModel):
@@ -25,7 +24,7 @@ async def get_prediction_request(request: PredictRequest):
     return MoveResponse(move)
 
 
-def predict_move(fen: str, depth: int):
+def predict_move(fen: str, depth: int = 1):
     board = chess.Board(fen)
     ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
 
