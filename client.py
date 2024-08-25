@@ -7,7 +7,7 @@ def request_ai_move(url: str, fen: str):
     payload = {
         "fen": fen,
     }
-    response = requests.get(url, json=payload)
+    response = requests.post(url, json=payload)
     if response.status_code != 200:
         print(f"Request failed with code {response.status_code}! Retrying...")
         time.sleep(1)
