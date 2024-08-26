@@ -36,7 +36,7 @@ def predict_move(fen: str, depth: int = 1):
         ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
 
         for ai_move in ai_moves:
-            if ai_move in list(board.legal_moves):
+            if ai_move in board.legal_moves:
                 return ai_move
 
         depth += 1
