@@ -34,6 +34,6 @@ def print_banner():
 
 URL = register_arguments()
 print_banner()
-cli.play_against_ai(URL, ai_color=chess.BLACK)
+cli.play_against_ai(ai_color=chess.BLACK, url=URL)
 
 print("Goodbye")
