@@ -6,7 +6,7 @@ def play_against_ai(ai_color: chess.Color, url: str, fen: str = chess.STARTING_F
     print (
         "Please express the moves you want to play " +
         "by stating the square of the piece you want to move and the square " +
-        "you want to move to e.g. 'c2c4'!"
+        "it should be moved to e.g. 'c2c4'!"
     )
     board = chess.Board(fen)
     while not board.is_game_over():

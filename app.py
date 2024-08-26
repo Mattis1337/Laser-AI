@@ -26,7 +26,7 @@ def print_banner():
         r'|  `----./  _____  \  .----)   |   |  |____ |  |\  \----.     /  _____  \  |  |' + '\n' +
         r'|_______/__/     \__\ |_______/    |_______|| _| `._____|    /__/     \__\ |__|' + '\n'
     )
-    print("\nAI server is " + URL)
+    print("\nAI server is " + URL + "\n")
 
 
 #dataset = datasets.init_chess_dataset(c.BLACK)
