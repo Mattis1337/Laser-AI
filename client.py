@@ -17,8 +17,16 @@ def request_ai_move(url: str, fen: str):
 
 
 def request_user_move(board: chess.Board):
-    move = input("Insert your next move: ")
-    if not move in board.legal_moves:
-        print("Invalid move")
-        return request_user_move(board)
-    return move
+    while True:
+        move = input("Insert your next move: ")
+        try:
+            move = board.parse_uci(move)
+        except ValueError:
+            print("Invalid UCI notation of move!")
+            continue
+
+        if move not in board.legal_moves:
+            print("Illegal move")
+            continue
+
+        return move

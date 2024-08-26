@@ -30,10 +30,14 @@ async def get_prediction_request(request: PredictRequest):
 
 def predict_move(fen: str, depth: int = 1):
     board = chess.Board(fen)
-    ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
+    # TODO(Samuil): Isn't a loop that generates
+    # all previous moves again + 1 more move very inefficient
+    while depth <= 5:
+        ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
 
-    for ai_move in ai_moves:
-        if ai_move in board.legal_moves:
-            return ai_move
+        for ai_move in ai_moves:
+            if ai_move in list(board.legal_moves):
+                return ai_move
 
-    return predict_move(fen, depth + 1)
+        depth += 1
+    return board.legal_moves[0]

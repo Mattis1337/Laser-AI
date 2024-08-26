@@ -14,5 +14,5 @@ def play_against_ai(ai_color: chess.Color, url: str):
         if board.turn is ai_color:
             move = request_ai_move(url, board.fen)
         else:
-            request_user_move(board)
+            move = request_user_move(board)
         board.push(move)
