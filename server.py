@@ -25,7 +25,7 @@ class MoveResponse(BaseModel):
 @app.post("/predict", response_model=MoveResponse)
 async def get_prediction_request(request: PredictRequest):
     move = await asyncio.get_event_loop().run_in_executor(executor, predict_move, request.fen)
-    return MoveResponse(move)
+    return { "move": move }
 
 
 def predict_move(fen: str, depth: int = 1):
@@ -40,4 +40,5 @@ def predict_move(fen: str, depth: int = 1):
                 return ai_move
 
         depth += 1
-    return board.legal_moves[0]
+    # Make legal_move generator a list, get the first move and then convert it to SAN
+    return board.san(list(board.legal_moves)[0])
