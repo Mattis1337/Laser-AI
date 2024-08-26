@@ -3,9 +3,9 @@ import time
 import chess
 
 
-def request_ai_move(url: str, fen: str, retries: int):
+def request_ai_move(url: str, board: chess.Board, retries: int):
     payload = {
-        "fen": fen,
+        "fen": board.fen,
     }
 
     while retries > 0:
@@ -18,9 +18,15 @@ def request_ai_move(url: str, fen: str, retries: int):
             continue
 
         try:
-            move = response.json()["move"]
+            move_san: str = response.json()["move"]
         except (requests.exceptions.JSONDecodeError, KeyError):
             print(f"Couldn't decode JSON received by server! Retrying...")
+            continue
+
+        try:
+            move = board.parse_san(move_san)
+        except ValueError:
+            print("AI used invalid SAN notation for move!")
             continue
 
         return move
