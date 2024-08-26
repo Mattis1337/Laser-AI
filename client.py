@@ -5,13 +5,13 @@ import chess
 
 def request_ai_move(url: str, board: chess.Board, retries: int = 5, delay: int = 1):
     payload = {
-        "fen": board.fen,
+        "fen": board.fen(),
     }
 
     while retries > 0:
         retries -= 1
 
-        response = requests.post(url, data=payload)
+        response = requests.post(url, json=payload)
 
         if response.status_code != 200:
             print(f"Request failed with code {response.status_code}! Retrying...")
