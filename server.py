@@ -1,6 +1,6 @@
 # REST API
 #from typing import Union
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 # Deps for async AI usage
 import asyncio
@@ -29,14 +29,33 @@ async def get_prediction_request(request: PredictRequest):
 
 
 def predict_move(fen: str, depth: int = 1):
-    board = chess.Board(fen)
+    try:
+        board = chess.Board(fen)
+    except:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid FEN code",
+        )
+
+    if board.legal_moves.count() == 0:
+        raise HTTPException(
+            status_code=403,
+            detail="No moves possible"
+        )
+
     # TODO(Samuil): Isn't a loop that generates
     # all previous moves again + 1 more move very inefficient
     while depth <= 5:
-        ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
+        try:
+            ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
+        except:
+            raise HTTPException(
+                status_code=406,
+                detail="AI not available"
+            )
 
         for ai_move in ai_moves:
-            if ai_move in board.legal_moves:
+            if board.is_legal(ai_move):
                 return ai_move
 
         depth += 1
