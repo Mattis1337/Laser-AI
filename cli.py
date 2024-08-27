@@ -3,6 +3,13 @@ import chess
 
 
 def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
+
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        print("Invalid FEN code provided in command arguments!")
+        exit(1)
+
     print (
         "\n" +
         "Please express the moves you want to play " +
@@ -10,7 +17,7 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
         "then followed by the square it should be moved to (e.g. 'c2c4')!",
         "\nHint: That notation is called Universal Chess Interface (UCI)"
     )
-    board = chess.Board(fen)
+
     while not board.is_game_over():
         # print beautiful CLI chess board
         print(board.unicode(

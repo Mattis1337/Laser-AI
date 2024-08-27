@@ -31,7 +31,7 @@ async def get_prediction_request(request: PredictRequest):
 def predict_move(fen: str, depth: int = 1):
     try:
         board = chess.Board(fen)
-    except:
+    except ValueError:
         raise HTTPException(
             status_code=403,
             detail="Invalid FEN code",
