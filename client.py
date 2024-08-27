@@ -3,7 +3,7 @@ import time
 import chess
 
 
-def request_ai_move(url: str, board: chess.Board, retries: int = 5, delay: int = 1):
+def request_ai_move(board: chess.Board, url: str, retries: int = 5, delay: int = 1):
     payload = {
         "fen": board.fen(),
     }
