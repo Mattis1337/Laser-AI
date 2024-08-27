@@ -8,8 +8,10 @@ import chess
 #import train_model
 import cli
 
+
 URL: str
 FEN: str
+COLOR: chess.Color
 
 
 def register_arguments():
@@ -22,13 +24,21 @@ def register_arguments():
     parser.add_argument('-i', '--ip', help='IP or domain of the server hosting LaserAI', default='127.0.0.1')
     parser.add_argument('-p', '--port', help='port the AI provider is listening to', default='8000')
     parser.add_argument('-f', '--fen', help='FEN code of the game to start against AI', default=chess.STARTING_FEN)
+    parser.add_argument('-c', '--color', help='Whether the player should be white or black', default='white')
 
     # parse parameters
     args = parser.parse_args()
     url = f"http://{args.ip}:{args.port}/predict"
     fen = args.fen
+    color: chess.Color
+    match args.color.lower():
+        case "white": color = chess.COLORS[0]
+        case "black": color = chess.COLORS[1]
+        case _:
+            print("Color paramater may only be 'white' or 'black'!")
+            exit(1)
 
-    return url, fen
+    return url, fen, color
 
 
 def print_banner():
@@ -47,8 +57,8 @@ def print_banner():
 #dataset = datasets.init_chess_dataset(c.BLACK)
 #train_model.train_chess_model(dataset, 20)
 
-URL, FEN = register_arguments()
+URL, FEN, COLOR = register_arguments()
 print_banner()
-cli.play_against_ai(FEN, ai_host=URL, ai_color=chess.BLACK)
+cli.play_against_ai(FEN, ai_host=URL, ai_color=not COLOR)
 
 print("Goodbye")
