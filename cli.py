@@ -2,7 +2,7 @@ import client
 import chess
 
 
-def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
+def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color):
 
     try:
         board = chess.Board(fen)
@@ -20,12 +20,7 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
 
     while not board.is_game_over():
         # print beautiful CLI chess board
-        print(board.unicode(
-            invert_color=True,
-            #borders=True,
-            empty_square=".",
-            orientation=not ai_color,
-        ))
+        print_board(board, unicode, side=not ai_color)
         # generate move
         if board.turn is ai_color:
             move = client.request_ai_move(board, url=ai_host, retries=5)
@@ -37,3 +32,15 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
         # play move
         board.push(move)
     print(f"Final board state is {board.fen()}")
+
+
+def print_board(board: chess.Board, unicode: bool, side: chess.Color):
+    if not unicode:
+        print(board)
+        return
+    print(board.unicode(
+        invert_color=True,
+        #borders=True,
+        empty_square=".",
+        orientation=side,
+    ))

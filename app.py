@@ -12,6 +12,7 @@ import cli
 URL: str
 FEN: str
 COLOR: chess.Color
+UNICODE: bool
 
 
 def register_arguments():
@@ -25,6 +26,7 @@ def register_arguments():
     parser.add_argument('-p', '--port', help='port the AI provider is listening to', default='8000')
     parser.add_argument('-f', '--fen', help='FEN code of the game to start against AI', default=chess.STARTING_FEN)
     parser.add_argument('-c', '--color', help='Whether the player should be white or black', default='white')
+    parser.add_argument('-u', '--unicode', help='Enable unicode characters', action='store_true')
 
     # parse parameters
     args = parser.parse_args()
@@ -37,8 +39,9 @@ def register_arguments():
         case _:
             print("Color paramater may only be 'white' or 'black'!")
             exit(1)
+    unicode=args.unicode
 
-    return url, fen, color
+    return url, fen, color, unicode
 
 
 def print_banner():
@@ -57,8 +60,8 @@ def print_banner():
 #dataset = datasets.init_chess_dataset(c.BLACK)
 #train_model.train_chess_model(dataset, 20)
 
-URL, FEN, COLOR = register_arguments()
+URL, FEN, COLOR, UNICODE = register_arguments()
 print_banner()
-cli.play_against_ai(FEN, ai_host=URL, ai_color=not COLOR)
+cli.play_against_ai(FEN, UNICODE, ai_host=URL, ai_color=not COLOR)
 
 print("Goodbye")
