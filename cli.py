@@ -12,7 +12,14 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
     )
     board = chess.Board(fen)
     while not board.is_game_over():
-        print(board)
+        # print beautiful CLI chess board
+        print(board.unicode(
+            invert_color=True,
+            #borders=True,
+            empty_square=".",
+            orientation=not ai_color,
+        ))
+        # generate move
         if board.turn is ai_color:
             move = client.request_ai_move(board, url=ai_host, retries=5)
             if move is None:
@@ -20,5 +27,6 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
                 break
         else:
             move = client.request_user_move(board)
+        # play move
         board.push(move)
     print(f"Final board state is {board.fen()}")
