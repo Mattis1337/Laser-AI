@@ -59,7 +59,7 @@ def predict_move(fen: str, depth: int = 1):
         except ValueError:
             continue
         if board.is_legal(move):
-            return move
+            return ai_move
 
     # Make legal_move generator a list, get the first move and then convert it to SAN
     return board.san(list(board.legal_moves)[0])
