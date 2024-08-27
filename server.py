@@ -45,19 +45,21 @@ def predict_move(fen: str, depth: int = 1):
 
     # TODO(Samuil): Isn't a loop that generates
     # all previous moves again + 1 more move very inefficient
-    while depth <= 5:
+    try:
+        ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
+    except:
+        raise HTTPException(
+            status_code=406,
+            detail="AI not available"
+        )
+
+    for ai_move in ai_moves:
         try:
-            ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
-        except:
-            raise HTTPException(
-                status_code=406,
-                detail="AI not available"
-            )
+            move = board.parse_san(ai_move)
+        except ValueError:
+            continue
+        if board.is_legal(move):
+            return move
 
-        for ai_move in ai_moves:
-            if board.is_legal(ai_move):
-                return ai_move
-
-        depth += 1
     # Make legal_move generator a list, get the first move and then convert it to SAN
     return board.san(list(board.legal_moves)[0])
