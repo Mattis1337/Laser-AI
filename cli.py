@@ -6,8 +6,9 @@ def play_against_ai(fen: str, ai_host: str, ai_color: chess.Color):
     print (
         "\n" +
         "Please express the moves you want to play " +
-        "by stating the square of the piece you want to move and the square " +
-        "it should be moved to e.g. 'c2c4'!"
+        "by writing down the square of the piece you want to move " +
+        "then followed by the square it should be moved to (e.g. 'c2c4')!",
+        "\nHint: That notation is called Universal Chess Interface (UCI)"
     )
     board = chess.Board(fen)
     while not board.is_game_over():

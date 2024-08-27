@@ -14,7 +14,11 @@ FEN: str
 
 def register_arguments():
     # define arguments
-    parser = argparse.ArgumentParser(description='Run the LaserAI client')
+    parser = argparse.ArgumentParser(
+        description='Run the LaserAI client. ' +
+                    'By default localhost and port 8000 are used for the server. ' +
+                    'The usual chess starting position is used if no FEN code is provided explicitly.'
+    )
     parser.add_argument('-i', '--ip', help='IP or domain of the server hosting LaserAI', default='127.0.0.1')
     parser.add_argument('-p', '--port', help='port the AI provider is listening to', default='8000')
     parser.add_argument('-f', '--fen', help='FEN code of the game to start against AI', default=chess.STARTING_FEN)
@@ -29,12 +33,12 @@ def register_arguments():
 
 def print_banner():
     print ( 
-        r' __          ___           _______. _______ .______               ___       __ ' + '\n' +
-        r'|  |        /   \         /       ||   ____||   _  \             /   \     |  |' + '\n' +
-        r'|  |       /  ^  \       |   (----`|  |__   |  |_)  |    ______ /  ^  \    |  |' + '\n' +
-        r'|  |      /  /_\  \       \   \    |   __|  |      /    |______/  /_\  \   |  |' + '\n' +
-        r'|  `----./  _____  \  .----)   |   |  |____ |  |\  \----.     /  _____  \  |  |' + '\n' +
-        r'|_______/__/     \__\ |_______/    |_______|| _| `._____|    /__/     \__\ |__|' + '\n'
+        r'  __          ___           _______. _______ .______               ___       __ ' + '\n' +
+        r' |  |        /   \         /       ||   ____||   _  \             /   \     |  |' + '\n' +
+        r' |  |       /  ^  \       |   (----`|  |__   |  |_)  |    ______ /  ^  \    |  |' + '\n' +
+        r' |  |      /  /_\  \       \   \    |   __|  |      /    |______/  /_\  \   |  |' + '\n' +
+        r' |  `----./  _____  \  .----)   |   |  |____ |  |\  \----.     /  _____  \  |  |' + '\n' +
+        r' |_______/__/     \__\ |_______/    |_______|| _| `._____|    /__/     \__\ |__|' + '\n'
     )
     print(f"\n AI server is '{URL}'")
     print(f"\n Initial board state is '{FEN}'")
