@@ -11,18 +11,23 @@ def request_ai_move(board: chess.Board, url: str, retries: int = 5, delay: int =
     while retries > 0:
         retries -= 1
 
-        response = requests.post(url, json=payload)
+        try:
+            response = requests.post(url, json=payload)
+        except requests.ConnectionError as error:
+            print(f"{error}! Retrying...")
+            time.sleep(delay)
+            continue
 
         try:
             response.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(f"{error}. Retrying")
+        except requests.HTTPError as error:
+            print(f"{error}! Retrying...")
             time.sleep(delay)
             continue
 
         try:
             move_san: str = response.json()["move"]
-        except (requests.exceptions.JSONDecodeError, KeyError):
+        except (requests.JSONDecodeError, KeyError):
             print("Couldn't decode JSON sent by server! Retrying...")
             time.sleep(delay)
             continue
