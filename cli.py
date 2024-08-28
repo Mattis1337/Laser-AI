@@ -35,9 +35,13 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
 
 
 def print_board(board: chess.Board, unicode: bool, side: chess.Color):
+    # print board with ASCII characters
     if not unicode:
+        print('-' * 8 * 2)
         print(board)
         return
+    # print board with unicode characters
+    print(u'\u2500' * 8 * 2)
     print(board.unicode(
         invert_color=True,
         #borders=True,
