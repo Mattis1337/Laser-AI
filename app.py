@@ -1,3 +1,9 @@
+"""
+The starting point of the CLI.
+The parameters that are used to configure essential variables of the client are registered here.
+After that some info is printed to STDOUT and lastly the game starts.
+"""
+
 # importing libraries
 # import numpy as np
 import argparse
@@ -16,6 +22,15 @@ UNICODE: bool
 
 
 def register_arguments():
+    """
+    Register arguments of script used to configure various mandatory options for the AI
+
+    Returns:
+        str: URL of the AI server
+        str: Starting position of board
+        chess.Color: Boolean representing the players color: white (True) or black (False)
+        bool: Whether Unicode chars are enabled by user
+    """
     # define arguments
     parser = argparse.ArgumentParser(
         description='Run the LaserAI client. ' +
@@ -45,6 +60,9 @@ def register_arguments():
 
 
 def print_banner():
+    """
+    Print Laser-AI banner and important information about the clients configuration
+    """
     print ( 
         r'  __          ___           _______. _______ .______               ___       __ ' + '\n' +
         r' |  |        /   \         /       ||   ____||   _  \             /   \     |  |' + '\n' +
