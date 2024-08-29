@@ -3,6 +3,16 @@ import chess
 
 
 def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color):
+    """
+    Defines the gameplay loop. First loads the chess board using the provided FEN and verifies it's legal.
+    Then a move is played by the AI or player in rotating turns. This continues until a win codition is met.
+
+    Args:
+        fen (str): Starting position of board
+        unicode (bool): Whether to print Unicode chars
+        ai_host (str): URL of AI server
+        ai_color (chess.Color): Side of AI
+    """
 
     try:
         board = chess.Board(fen)
@@ -31,17 +41,33 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
             move = client.request_user_move(board)
         # play move
         board.push(move)
-    print(f"Final board state is {board.fen()}")
+    print(f"Final board state is '{board.fen()}'")
 
 
 def print_board(board: chess.Board, unicode: bool, side: chess.Color):
+    """
+    Print an instance of a chess board.
+    The difference to plain print(chess.Board) is that the function can print
+    the chess board using Unicode characters if enabled by the user, but
+    can also fallback to ASCII. There's also the ability to change the orientation,
+    which is annoying to do manually on print(chess.Board).
+
+    Args:
+        board (chess.Board): Board to print
+        unicode (bool): Whether to use Unicode or not
+        side (chess.Color): The orientation the player is facing the board
+    """
     # print board with ASCII characters
     if not unicode:
         print('-' * 8 * 2)
-        print(board)
+        # flip board if Black is the player
+        print(
+            board if side is chess.WHITE
+            else board.transform(chess.flip_vertical).transform(chess.flip_horizontal)
+        )
         return
     # print board with unicode characters
-    print(u'\u2500' * 8 * 2)
+    print('\u2500' * 8 * 2)
     print(board.unicode(
         invert_color=True,
         #borders=True,
