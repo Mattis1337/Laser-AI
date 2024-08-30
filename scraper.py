@@ -1,8 +1,10 @@
-import time
 import requests
+import time
+import os
 
 # use absolute paths! (or os.expand)
 save_dir = r"Games"
+os.makedirs(save_dir, exist_ok=True)
 
 players = [
     "magnuscarlsen",
@@ -88,17 +90,26 @@ def get_games_pgn(username: str):
 
 
 def save_game(game_pgn):
-    # /home/user/Downloads/Games/UnixTime.png
-    file = open(f"{save_dir}/{time.time()}.pgn", "w")
-    file.write(game_pgn)
-    file.close()
+
+    try:
+        timestamp = int(time.time())
+        file_path = os.path.join(save_dir, f"{timestamp}.pgn")
+        with open(file_path, "w") as file:
+            file.write(game_pgn)    # /home/user/Downloads/Games/UnixTime.pgn
+
+    except (IOError, OSError) as error:
+        print("An IO error occurred while saving a game: " + error)
 
 
-def save_games(username):
-    games = get_games_pgn(username)
+def process_games(player: str):
+    games = get_games_pgn(player)
+    if not games or games.count() == 0:
+        print(f"No games acquired for player {player}")
+        return
+
     for game in games:
         save_game(game)
 
 
 for player in players:
-    save_games(player)
+    process_games(player)
