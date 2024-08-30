@@ -40,24 +40,49 @@ json_header = {
 }
 
 
-def get_games_pgn(username):
+def get_games_pgn(username: str):
     """
-    Downloads all games in PGN format that a Chess.Com account has ever played in
+    Downloads all public games that a Chess.com account has ever played as PGN
     :param username: The user to download games from
     :return: A list of PGN strings
     """
+
     # builds the player's game archive URL which is an index of all games
     url = f"https://api.chess.com/pub/player/{username}/games/archives"
-    archives = requests.get(url=url, headers=json_header).json()  # sends request and serializes the response string
     filtered_games = []
+    
+    try:
+        request = requests.get(url=url, headers=json_header)
+        request.raise_for_status()
+        archives = request.json()["archives"]
+
+    except (requests.RequestException, KeyError) as error:
+        print(f"Failed to GET archives of {username} with error: {error}")
+        return filtered_games
+
     # "archives" contains URLs of monthly game collections
-    for archive in archives["archives"]:
-        games = requests.get(url=archive, headers=json_header).json()["games"]  # 2d array of game representations
+    for archive in archives:
+
+        try:
+            request = requests.get(url=archive, headers=json_header)
+            request.raise_for_status()
+            games = request.json()["games"]
+
+        except (requests.RequestException, KeyError) as error:
+            print(f"Failed to GET games from '{archive}' with error: {error}")
+            continue
+
         for game in games:
-            # apply game filters here
-            if game["time_class"] == "bullet":
+
+            try:
+                # apply game filters here
+                if game["time_class"] == "bullet":
+                    continue
+                filtered_games.append(game["pgn"])
+
+            except KeyError as error:
+                print(f"Malformed game JSON in '{game}'! {error}")
                 continue
-            filtered_games.append(game["pgn"])
 
     return filtered_games
 
