@@ -92,8 +92,15 @@ def get_games_pgn(username: str) -> list[str]:
 
             try:
                 # apply game filters here
-                if game["time_class"] == "bullet":
+                if not game["rated"]:   # casual games
                     continue
+
+                if game["time_class"] == "bullet":  # bullet = 1 minute games
+                    continue
+
+                if game["rules"] == "chess960": # ruleset that could mess with AI
+                    continue
+
                 filtered_games.append(game["pgn"])
 
             except KeyError as error:
@@ -119,7 +126,7 @@ def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -
 def process_games(player: str, start_time: int) -> int:
     print(f"Downloading {player}'s games...")
     games: list[str] = get_games_pgn(player)
-    if not games or len(games) == 0:
+    if not games:
         logging.warn(f"No games acquired for player {player}")
         return 1
 
