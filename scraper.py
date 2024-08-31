@@ -1,11 +1,12 @@
 import requests
 import time
 import os
+import logging
 
-# use absolute paths! (or os.expand)
 save_dir = r"Games"
 os.makedirs(save_dir, exist_ok=True)
 
+# players to download games from
 players = [
     "magnuscarlsen",
     "hikaru",
@@ -41,6 +42,19 @@ json_header = {
     'User-Agent': 'PostmanRuntime/10.21.0',
 }
 
+# define log file
+log_dir = r"Logs"
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "scraper.log")
+if os.path.exists(log_file):
+    os.remove(log_file)
+
+# configure logging
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
 
 def get_games_pgn(username: str) -> list[str]:
     """
@@ -59,7 +73,7 @@ def get_games_pgn(username: str) -> list[str]:
         archives: list[str] = request.json()["archives"]
 
     except (requests.RequestException, KeyError) as error:
-        print(f"Failed to GET archives of {username} with error: {error}")
+        logging.error(f"Failed to GET archives of {username}!", exc_info=True)
         return filtered_games
 
     # "archives" contains URLs of monthly game collections
@@ -71,7 +85,7 @@ def get_games_pgn(username: str) -> list[str]:
             games: list[dict[str, str]] = request.json()["games"]
 
         except (requests.RequestException, KeyError) as error:
-            print(f"Failed to GET games from '{archive}' with error: {error}")
+            logging.error(f"Failed to GET games from '{archive}'!", exc_info=True)
             continue
 
         for game in games:
@@ -83,7 +97,7 @@ def get_games_pgn(username: str) -> list[str]:
                 filtered_games.append(game["pgn"])
 
             except KeyError as error:
-                print(f"Malformed game JSON in '{game}'! {error}")
+                logging.error(f"Malformed game JSON in '{game}'", exc_info=True)
                 continue
 
     return filtered_games
@@ -98,18 +112,24 @@ def save_game(game_pgn: str) -> None:
             file.write(game_pgn)    # /home/user/Downloads/Games/UnixTime.pgn
 
     except (IOError, OSError) as error:
-        print("An IO error occurred while saving a game: " + error)
-
-
-def process_games(player: str) -> None:
-    games: list[str] = get_games_pgn(player)
-    if not games or games.count() == 0:
-        print(f"No games acquired for player {player}")
+        logging.error("An IO error occurred while saving a game!", exc_info=True)
         return
 
+
+def process_games(player: str) -> int:
+    print(f"Downloading {player}'s games...")
+    games: list[str] = get_games_pgn(player)
+    if not games or len(games) == 0:
+        logging.warn(f"No games acquired for player {player}")
+        return 1
+
+    print(f"Saving {player}'s PGNs...")
     for game in games:
         save_game(game)
 
+    return 0
+
 
 for player in players:
-    process_games(player)
+    if process_games(player) != 0:
+        print(f"An error occured while processing {player}'s games. Check the log!")
