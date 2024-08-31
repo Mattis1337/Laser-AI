@@ -103,20 +103,20 @@ def get_games_pgn(username: str) -> list[str]:
     return filtered_games
 
 
-def save_game(game_pgn: str) -> None:
+def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -> None:
 
     try:
-        timestamp = int(time.time())
-        file_path: str = os.path.join(save_dir, f"{timestamp}.pgn")
+        save_file = f"{unix_time}-{user_name}-{save_number}.pgn"
+        file_path: str = os.path.join(save_dir, save_file)
         with open(file_path, "w") as file:
-            file.write(game_pgn)    # /home/user/Downloads/Games/UnixTime.pgn
+            file.write(game_pgn)
 
     except (IOError, OSError) as error:
         logging.error("An IO error occurred while saving a game!", exc_info=True)
         return
 
 
-def process_games(player: str) -> int:
+def process_games(player: str, start_time: int) -> int:
     print(f"Downloading {player}'s games...")
     games: list[str] = get_games_pgn(player)
     if not games or len(games) == 0:
@@ -124,12 +124,23 @@ def process_games(player: str) -> int:
         return 1
 
     print(f"Saving {player}'s PGNs...")
-    for game in games:
-        save_game(game)
+    for i, game in enumerate(games):
+        save_game(
+            user_name=player,
+            unix_time=start_time,
+            save_number=i,
+            game_pgn=game
+        )
 
     return 0
 
 
-for player in players:
-    if process_games(player) != 0:
-        print(f"An error occured while processing {player}'s games. Check the log!")
+def main(players: list[str]):
+    current_time = int(time.time())
+    for player in players:
+        if process_games(player, start_time=current_time) != 0:
+            print(f"An error occured while processing {player}'s games. Check the log!")
+
+
+if __name__ == "__main__":
+    main(players)
