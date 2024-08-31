@@ -8,32 +8,57 @@ os.makedirs(save_dir, exist_ok=True)
 
 # players to download games from
 players = [
+    # https://www.chess.com/ratings&page=1 19:57 08/31/2024
     "magnuscarlsen",
     "hikaru",
-    "hansontwitch",
     "fabianocaruana",
-    "chefshouse",
-    "anishgiri",
+    "ghandeevam2003",
     "lachesisq",
     "firouzja2003",
-    "gmwso",
-    "anishgiri",
-    "sebastian",
-    "sergeykarjakin",
-    "anand",
-    "tradjabov",
-    "rpragchess",
-    "viditchess",
     "chesswarrior7197",
-    "lovevae",
-    "ghandeevam2003",
-    "vincentkeymer",
-    "grischuk",
-    "lyonbeast",
-    "polish_fighter3000",
-    "liemle",
     "gukeshdommaraju",
+    "lovevae",
+    "gmwso",
+    "thevish",
+    "rpragchess",
+    "dominguezonyoutube",
+    "liemle",
+    "chefshouse",
+    "azerichess",
+    "polish_fighter3000",
+    "vincentkeymer",
     "levonaronian",
+    "anishgiri",
+    "parhamov",
+    "lyonbeast",
+    "viditchess",
+    "mishanick",
+    "lordillidan",
+    "amintabatabaei",
+    "chesspanda123",
+    "wanghao",
+    "sibelephant",
+    "spicycaterpillar",
+    "tradjabov",
+    "vaathi_coming",
+    "psvidler",
+    "joppie2",
+    "duhless",
+    "chesswolf1210",
+    "bigfish1995",
+    "konavets",
+    "grischuk",
+    "gmharikrishna",
+    "alexandr_predke",
+    "solingen2020",
+    "evgenyt",
+    "radzio1987",
+    "bogdandeac",
+    "bilodeaua",
+    "colchonero64",
+    "dalmatinac101",
+    "andreikka",
+    # 49/50 players, 1 without chess.com account
 ]
 
 # Chess.com returns HTML instead of JSON if useragent isn't Postman
@@ -127,7 +152,7 @@ def process_games(player: str, start_time: int) -> int:
     print(f"Downloading {player}'s games...")
     games: list[str] = get_games_pgn(player)
     if not games:
-        logging.warn(f"No games acquired for player {player}")
+        logging.warning(f"No games acquired for player {player}")
         return 1
 
     print(f"Saving {player}'s PGNs...")
