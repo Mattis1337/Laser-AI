@@ -29,8 +29,12 @@ logging.basicConfig(
 def get_games_pgn(username: str) -> list[str]:
     """
     Downloads all public games that a Chess.com account has ever played as PGN
-    :param username: The user to download games from
-    :return: A list of PGN strings
+
+    Args:
+        username (str): The user to download games from
+
+    Returns:
+        list[str]: A list of PGN strings
     """
 
     # builds the player's game archive URL which is an index of all games
@@ -80,7 +84,20 @@ def get_games_pgn(username: str) -> list[str]:
     return filtered_games
 
 
-def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -> None:
+def save_game(unix_time: int, user_name: str, save_number: int, game_pgn: str) -> None:
+    """
+    Saves a string (PGN) to the Games directory in a file with the following format:
+    "UNIXTIME-USERNAME-GAME#.pgn"
+    The timestamp is useful when running the script multiple times
+    to deleted old data which could lead to overfitting otherwise.
+    The game number is just there to prevent overriding the PGN file. 
+
+    Args:
+        unix_time (int): timestamp used to distinguish between multiple runs
+        user_name (str): the username the PGN belongs to
+        save_number (int): save number preventing erasure of old PGNs
+        game_pgn (str): The PGN data itself
+    """
 
     try:
         save_file = f"{unix_time}-{user_name}-{save_number}.pgn"
@@ -94,17 +111,28 @@ def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -
 
 
 def process_games(player: str, start_time: int) -> int:
+    """
+    Downloads public games of a Chess.com account
+    and then saves them as individual PGN files
+
+    Args:
+        player (str): Chess.com username
+        start_time (int): UNIX time to prepend to PGN names
+
+    Returns:
+        int: exit status
+    """
     print(f"Downloading {player}'s games...")
     games: list[str] = get_games_pgn(player)
-    if not games:
+    if not games:   # make sure list is not None or empty
         logging.warning(f"No games acquired for player {player}")
         return 1
 
     print(f"Saving {player}'s PGNs...")
     for i, game in enumerate(games):
         save_game(
-            user_name=player,
             unix_time=start_time,
+            user_name=player,
             save_number=i,
             game_pgn=game
         )
