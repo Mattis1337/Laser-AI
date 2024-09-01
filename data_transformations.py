@@ -120,12 +120,12 @@ def tensor_to_targets(tensor: torch.Tensor, color: chess.COLORS, targets: dict, 
     if annotation is False:
         return torch.Tensor(tensors[0]).float()  # returning only index 0
 
-    annotations = [None]
+    annotations = []
     # returns all fitting annotations to the tensors
     for i in range(amount_targets):
         for key, value in targets.items():
             if compare_tensors(value, tensors[i]):
-                annotations[i] = key
+                annotations.append(key)
 
     return annotations
 

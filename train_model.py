@@ -69,7 +69,7 @@ def train(dataloader, model, criterion, optimizer):
         inputs, labels = data  # not adjusted for CUDA devices
 
         # zero the parameter gradient
-        optimizer.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
         # forward + backward + optimize
         pred = model(inputs)
@@ -186,12 +186,13 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer)
 
 
-def generate_move(color, fen):
+def generate_move(color, fen, amount_outputs=1):
     """
     When using the AI this function will return the move for a given
     game state.
     :param color: what type of AI is to be trained
     :param fen: current game state
+    :param amount_outputs: the top amount of targets to be returned
     """
 
     # loading the model
@@ -214,8 +215,15 @@ def generate_move(color, fen):
 
     with torch.no_grad():
         pred = model(x)
-        pred = dt.tensor_to_targets(pred, color, dt.targets_to_tensor(color), annotation=True)
+        pred = dt.tensor_to_targets(pred,
+                                    color,
+                                    dt.targets_to_tensor(color),
+                                    annotation=True,
+                                    amount_targets=amount_outputs)
+
         print(f'Predicted: "{pred}"')
+
+    return pred
 
 
 def load_model(color):
