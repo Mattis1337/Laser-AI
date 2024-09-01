@@ -140,8 +140,16 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     # casting the number of old outputs
     old_outputs = state['output_size']
 
+    # getting the device for training
+    device = (
+        "cuda"
+        if torch.cuda.is_available()
+        else "cpu"
+    )
+    print(f"Currently using {device} device!")
+
     # loading the model
-    model = NeuralNetwork(old_outputs)
+    model = NeuralNetwork(old_outputs).to(device)
 
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
