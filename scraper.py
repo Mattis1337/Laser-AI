@@ -1,36 +1,64 @@
-import time
 import requests
+import time
+import os
+import logging
 
-# use absolute paths! (or os.expand)
 save_dir = r"Games"
+os.makedirs(save_dir, exist_ok=True)
 
+# players to download games from
 players = [
+    # https://www.chess.com/ratings&page=1 19:57 08/31/2024
     "magnuscarlsen",
     "hikaru",
-    "hansontwitch",
     "fabianocaruana",
-    "chefshouse",
-    "anishgiri",
+    "ghandeevam2003",
     "lachesisq",
     "firouzja2003",
-    "gmwso",
-    "anishgiri",
-    "sebastian",
-    "sergeykarjakin",
-    "anand",
-    "tradjabov",
-    "rpragchess",
-    "viditchess",
     "chesswarrior7197",
-    "lovevae",
-    "ghandeevam2003",
-    "vincentkeymer",
-    "grischuk",
-    "lyonbeast",
-    "polish_fighter3000",
-    "liemle",
     "gukeshdommaraju",
+    "lovevae",
+    "gmwso",
+    "thevish",
+    "rpragchess",
+    "dominguezonyoutube",
+    "liemle",
+    "chefshouse",
+    "azerichess",
+    "polish_fighter3000",
+    "vincentkeymer",
     "levonaronian",
+    "anishgiri",
+    "parhamov",
+    "lyonbeast",
+    "viditchess",
+    "mishanick",
+    "lordillidan",
+    "amintabatabaei",
+    "chesspanda123",
+    "wanghao",
+    "sibelephant",
+    "spicycaterpillar",
+    "tradjabov",
+    "vaathi_coming",
+    "psvidler",
+    "joppie2",
+    "duhless",
+    "chesswolf1210",
+    "bigfish1995",
+    "konavets",
+    "grischuk",
+    "gmharikrishna",
+    "alexandr_predke",
+    "solingen2020",
+    "evgenyt",
+    "radzio1987",
+    "bogdandeac",
+    "bilodeaua",
+    "colchonero64",
+    "dalmatinac101",
+    "andreikka",
+    # 49/50 players, 1 without chess.com account
 ]
 
 # Chess.com returns HTML instead of JSON if useragent isn't Postman
@@ -39,41 +67,112 @@ json_header = {
     'User-Agent': 'PostmanRuntime/10.21.0',
 }
 
+# define log file
+log_dir = r"Logs"
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "scraper.log")
+if os.path.exists(log_file):
+    os.remove(log_file)
 
-def get_games_pgn(username):
+# configure logging
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+
+def get_games_pgn(username: str) -> list[str]:
     """
-    Downloads all games in PGN format that a Chess.Com account has ever played in
+    Downloads all public games that a Chess.com account has ever played as PGN
     :param username: The user to download games from
     :return: A list of PGN strings
     """
+
     # builds the player's game archive URL which is an index of all games
     url = f"https://api.chess.com/pub/player/{username}/games/archives"
-    archives = requests.get(url=url, headers=json_header).json()  # sends request and serializes the response string
-    filtered_games = []
+    filtered_games: list[str] = []
+    
+    try:
+        request = requests.get(url=url, headers=json_header)
+        request.raise_for_status()
+        archives: list[str] = request.json()["archives"]
+
+    except (requests.RequestException, KeyError) as error:
+        logging.error(f"Failed to GET archives of {username}!", exc_info=True)
+        return filtered_games
+
     # "archives" contains URLs of monthly game collections
-    for archive in archives["archives"]:
-        games = requests.get(url=archive, headers=json_header).json()["games"]  # 2d array of game representations
+    for archive in archives:
+
+        try:
+            request = requests.get(url=archive, headers=json_header)
+            request.raise_for_status()
+            games: list[dict[str, str]] = request.json()["games"]
+
+        except (requests.RequestException, KeyError) as error:
+            logging.error(f"Failed to GET games from '{archive}'!", exc_info=True)
+            continue
+
         for game in games:
-            # apply game filters here
-            if game["time_class"] == "bullet":
+
+            try:
+                # apply game filters here
+                if not game["rated"]:   # casual games
+                    continue
+
+                if game["time_class"] == "bullet":  # bullet = 1 minute games
+                    continue
+
+                if game["rules"] != "chess":    # other rulesets could mess up AI
+                    continue
+
+                filtered_games.append(game["pgn"])
+
+            except KeyError as error:
+                logging.error(f"Malformed game JSON in '{game}'", exc_info=True)
                 continue
-            filtered_games.append(game["pgn"])
 
     return filtered_games
 
 
-def save_game(game_pgn):
-    # /home/user/Downloads/Games/UnixTime.png
-    file = open(f"{save_dir}/{time.time()}.pgn", "w")
-    file.write(game_pgn)
-    file.close()
+def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -> None:
+
+    try:
+        save_file = f"{unix_time}-{user_name}-{save_number}.pgn"
+        file_path: str = os.path.join(save_dir, save_file)
+        with open(file_path, "w") as file:
+            file.write(game_pgn)
+
+    except (IOError, OSError) as error:
+        logging.error("An IO error occurred while saving a game!", exc_info=True)
+        return
 
 
-def save_games(username):
-    games = get_games_pgn(username)
-    for game in games:
-        save_game(game)
+def process_games(player: str, start_time: int) -> int:
+    print(f"Downloading {player}'s games...")
+    games: list[str] = get_games_pgn(player)
+    if not games:
+        logging.warning(f"No games acquired for player {player}")
+        return 1
+
+    print(f"Saving {player}'s PGNs...")
+    for i, game in enumerate(games):
+        save_game(
+            user_name=player,
+            unix_time=start_time,
+            save_number=i,
+            game_pgn=game
+        )
+
+    return 0
 
 
-for player in players:
-    save_games(player)
+def main(players: list[str]):
+    current_time = int(time.time())
+    for player in players:
+        if process_games(player, start_time=current_time) != 0:
+            print(f"An error occured while processing {player}'s games. Check the log!")
+
+
+if __name__ == "__main__":
+    main(players)
