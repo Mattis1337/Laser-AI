@@ -132,10 +132,10 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     # Reference for handling changing dimensions
     # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
 
-    train_dataloader = DataLoader(dataset, batch_size=32, shuffle=True, num_workers=4)
-    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
 
-    # loading the last checkpoint
+    # loading the last checkpoints
     state = load_model(dataset.__color__())
     # casting the number of old outputs
     old_outputs = state['output_size']
