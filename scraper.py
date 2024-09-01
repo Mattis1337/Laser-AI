@@ -123,7 +123,7 @@ def get_games_pgn(username: str) -> list[str]:
                 if game["time_class"] == "bullet":  # bullet = 1 minute games
                     continue
 
-                if game["rules"] == "chess960": # ruleset that could mess with AI
+                if game["rules"] != "chess":    # other rulesets could mess up AI
                     continue
 
                 filtered_games.append(game["pgn"])
