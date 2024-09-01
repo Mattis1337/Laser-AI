@@ -6,61 +6,6 @@ import logging
 save_dir = r"Games"
 os.makedirs(save_dir, exist_ok=True)
 
-# players to download games from
-players = [
-    # https://www.chess.com/ratings&page=1 19:57 08/31/2024
-    "magnuscarlsen",
-    "hikaru",
-    "fabianocaruana",
-    "ghandeevam2003",
-    "lachesisq",
-    "firouzja2003",
-    "chesswarrior7197",
-    "gukeshdommaraju",
-    "lovevae",
-    "gmwso",
-    "thevish",
-    "rpragchess",
-    "dominguezonyoutube",
-    "liemle",
-    "chefshouse",
-    "azerichess",
-    "polish_fighter3000",
-    "vincentkeymer",
-    "levonaronian",
-    "anishgiri",
-    "parhamov",
-    "lyonbeast",
-    "viditchess",
-    "mishanick",
-    "lordillidan",
-    "amintabatabaei",
-    "chesspanda123",
-    "wanghao",
-    "sibelephant",
-    "spicycaterpillar",
-    "tradjabov",
-    "vaathi_coming",
-    "psvidler",
-    "joppie2",
-    "duhless",
-    "chesswolf1210",
-    "bigfish1995",
-    "konavets",
-    "grischuk",
-    "gmharikrishna",
-    "alexandr_predke",
-    "solingen2020",
-    "evgenyt",
-    "radzio1987",
-    "bogdandeac",
-    "bilodeaua",
-    "colchonero64",
-    "dalmatinac101",
-    "andreikka",
-    # 49/50 players, 1 without chess.com account
-]
-
 # Chess.com returns HTML instead of JSON if useragent isn't Postman
 json_header = {
     'accept': 'application/json',
@@ -167,6 +112,27 @@ def process_games(player: str, start_time: int) -> int:
     return 0
 
 
+def get_players_from_file(file_path: str) -> list[str]:
+    """
+    Reads the Chess.com usernames from a file containing values separated by line breaks.
+
+    Args:
+        file_path (str): the file to parse
+
+    Returns:
+        list[str]: a list containing the file's values
+    """
+    players: list[str] = []
+    try:
+        with open(file_path, 'r') as file:
+            # remove whitespaces and save strings between them into list
+            players = [line.strip() for line in file]
+    except (IOError, OSError) as error:
+        logging.fatal(f"Couldn't read {file_path}!", exc_info=True)
+        raise RuntimeError(f"Failed to read file: {file_path}") from error
+    return players
+
+
 def main(players: list[str]):
     current_time = int(time.time())
     for player in players:
@@ -175,4 +141,7 @@ def main(players: list[str]):
 
 
 if __name__ == "__main__":
+    # not handling RuntimeError is intentional
+    # because the scraper can't work without a list; The Blacklist
+    players = get_players_from_file("rockyou.txt")
     main(players)
