@@ -3,7 +3,7 @@ import chess.pgn
 
 
 # CONVERTING ANNOTATIONS
-def fen_to_bitboards(fen):
+def fen_to_bitboards(fen: str) -> list[int]:
     """
     Converts a FEN to an array of integers. Converted to binary, they return bitboards.
     The order in the array is the same as python chess':
@@ -14,28 +14,28 @@ def fen_to_bitboards(fen):
         7. black knights
         [...] sorted by value
         11. black king
-    :param fen: The notation to convert
-    :return: An array of twelve bitboards. NULLABLE!
+
+    Args:
+        fen (str): board state in FEN to convert
+
+    Returns:
+        list[int]: list of 12 bitboards representing the board state
     """
+    bitboards: list[int] = []
+
     try:
         board = chess.Board(fen)
     except ValueError:
-        return None
-
-    bitboards = []
+        print("Invalid Forsyth Edwards Notation!")
+        return bitboards
 
     for color in chess.COLORS:
         for piece_type in chess.PIECE_TYPES:
-            # creates an empty bitboard for the specific type of piece and exact color
-            bitboard = chess.BB_EMPTY
-            piece = chess.Piece(piece_type, color)
-
-            # iterates over all squares
-            for square in chess.SQUARES:
-                if board.piece_at(square) == piece:
-                    bitboard |= 1 << square  # sets the square-th bit to 1
-
-            # adds the bitboard to the list
+            # gets bitboard of piece type and color
+            bitboard: int = board.pieces_mask(
+                piece_type=piece_type,
+                color=color
+            )
             bitboards.append(bitboard)
 
     return bitboards
