@@ -3,9 +3,9 @@ import chess.pgn
 
 
 # CONVERTING ANNOTATIONS
-def fen_to_bitboards(fen: str) -> list[int]:
+def get_bitboards(board: chess.Board) -> list[int]:
     """
-    Converts a FEN to an array of integers. Converted to binary, they return bitboards.
+    Converts board instance to an array of integers. Converted to binary, they return bitboards.
     The order in the array is the same as python chess':
         0. White pawns
         1. White knights
@@ -16,18 +16,12 @@ def fen_to_bitboards(fen: str) -> list[int]:
         11. black king
 
     Args:
-        fen (str): board state in FEN to convert
+        board (chess.Board): the board to represent as a bitboard
 
     Returns:
         list[int]: list of 12 bitboards representing the board state
     """
     bitboards: list[int] = []
-
-    try:
-        board = chess.Board(fen)
-    except ValueError:
-        print("Invalid Forsyth Edwards Notation!")
-        return bitboards
 
     for color in chess.COLORS:
         for piece_type in chess.PIECE_TYPES:
@@ -39,6 +33,16 @@ def fen_to_bitboards(fen: str) -> list[int]:
             bitboards.append(bitboard)
 
     return bitboards
+
+
+def fen_to_bitboards(fen: str) -> list[int]:
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        print("Invalid Forsyth Edwards Notation!")
+        return []
+
+    return get_bitboards(board)
 
 
 # boards = fen_to_bitboards(chess.STARTING_FEN)
@@ -65,34 +69,42 @@ def pgn_to_bitboards_final(pgn):
     return fen_to_bitboards(board.fen())
 
 
-def pgn_to_bitboards_snapshots(pgn):
+def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
     """
     Converts a PGN file to two arrays. The first one contains bitboards grouped by piece type in a subarray.
     The next move is stored in second one as well. This is done by snapshotting the board after each move.
     Therefore, accessing the corresponding move to the bitboard can be done by using the same index
-    :param pgn: The PGN file to read
-    :return: Two arrays containing bitboards and the next move in SAN. NULLABLE!
+
+    Args:
+        pgn (TextIO): handle to the PGN file to read
+
+    Returns:
+        list[list[int]]: each element of the first dimension is a board state. 
+            The nested lists represent the bitboards of each state.
+        list[str]: the move played for the board state in a 1:1 mapping
     """
+    states: list[list[int]] = []
+    moves: list[str] = []
+
     try:
         game = chess.pgn.read_game(pgn)  # loads game in
         board = game.board()
-    except ValueError:
-        return None, None
-
-    bitboards = []
-    moves = []
+    except (IOError, OSError, ValueError):
+        print("Invalid Portable Game Format!")
+        return states, moves
 
     # iterates through every move
     for move in game.mainline_moves():
-        bitboard = fen_to_bitboards(board.fen())    # gets current bitboard
-        san = board.san(move).replace('+', '')  # converts move to san and removes data causing over-fitting
-        # saves the data
-        bitboards.append(bitboard)
-        moves.append(san)
+        # gets current bitboard
+        bitboards: list[int] = get_bitboards(board)
+        states.append(bitboards)
+        # converts move to Universal Chess Interface
+        uci: str = board.uci(move)
+        moves.append(uci)
         # plays next move
         board.push(move)
 
-    return bitboards, moves
+    return states, moves
 
 
 def print_bitboard(bitboard):
