@@ -182,8 +182,8 @@ def compare_tensors(tensor1: torch.Tensor, tensor2: torch.Tensor):
     :param tensor1: first tensor
     :param tensor2: second tensor
     """
-    for i, index in enumerate(tensor1):
-        if index != tensor2[i]:
+    for i, num in enumerate(tensor1):
+        if num != tensor2[i]:
             return False
 
     return True

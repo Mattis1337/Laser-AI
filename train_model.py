@@ -53,13 +53,14 @@ class NeuralNetwork(nn.Module):
 
 
 # Single iteration training
-def train(dataloader, model, criterion, optimizer):
+def train(dataloader, model, criterion, optimizer, device):
     """
     Training a chess model depending on the color
     :param dataloader: the dataloader containing the white/black moves which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
     :param criterion: loss function
     :param optimizer: optimizer
+    :param device: the device currently used for training
     """
 
     size = len(dataloader.dataset)
@@ -72,8 +73,8 @@ def train(dataloader, model, criterion, optimizer):
         optimizer.zero_grad(set_to_none=True)
 
         # forward + backward + optimize
-        pred = model(inputs)
-        loss = criterion(pred, labels)
+        pred = model(inputs.to(device))
+        loss = criterion(pred, labels.to(device))
         loss.backward()
         optimizer.step()
 
@@ -87,12 +88,13 @@ def train(dataloader, model, criterion, optimizer):
     print("Epoch done!")
 
 
-def test(dataloader, model):
+def test(dataloader, model, device):
     """
     Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
     digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
+    :param device: the device currently used for training
     """
 
     total = 0
@@ -105,11 +107,11 @@ def test(dataloader, model):
             targets = dataloader.dataset.__gettargets__()
 
             # calculate outputs by running game states through the network
-            pred = model(image)
+            pred = model(image.to(device))
 
-            pred = dt.tensor_to_targets(pred, color, targets, amount_targets=1)
+            pred = dt.tensor_to_targets(pred, color, targets, amount_targets=1).to(device)
 
-            if dt.compare_tensors(label[0], pred) is True:
+            if dt.compare_tensors(label[0].to(device), pred) is True:
                 total += 1
 
             if (i+1) % 10000 == 0:
@@ -140,7 +142,7 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     # casting the number of old outputs
     old_outputs = state['output_size']
 
-    # getting the device for training
+    # getting the device which should be used for training
     device = (
         "cuda"
         if torch.cuda.is_available()
@@ -178,15 +180,15 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     # Train the network for the set epoch size
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
-        train(train_dataloader, model, criterion, optimizer)
+        train(train_dataloader, model, criterion, optimizer, device)
 
         if (epoch+1) % 20 == 0:
             # testing and saving the model after 20 epochs
-            test(test_dataloader, model)
+            test(test_dataloader, model, device)
             save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
 
     # testing the model after all epochs
-    test(test_dataloader, model)
+    test(test_dataloader, model, device)
 
     print("Done!")
 
