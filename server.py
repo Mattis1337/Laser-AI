@@ -39,7 +39,7 @@ async def get_prediction_request(request: PredictRequest):
     return { "move": move } # standardized response 
 
 
-def predict_move(fen: str, depth: int = 1):
+def predict_move(fen: str, depth: int = 5):
     """
     Predict move by running AI or selecting some legal move as fallback.
     This function parses the FEN provided by the client. If the FEN is valid,
