@@ -239,10 +239,8 @@ def generate_move(color, fen, amount_outputs=1):
     with torch.no_grad():
         pred = model(x)
         pred = dt.tensor_to_targets(pred,
-                                    color,
                                     outputs,
-                                    annotation=True,
-                                    amount_targets=amount_outputs)
+                                    amount_outputs)
 
         print(f'Predicted: "{pred}"')
 
