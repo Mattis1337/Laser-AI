@@ -79,7 +79,7 @@ def predict_move(fen: str, depth: int = 5):
     # Catch AI errors
     try:
         ai_moves = train_model.generate_move(color=board.turn, fen=fen, amount_outputs=depth)
-    except:
+    except Exception:
         raise HTTPException(
             status_code=406,
             detail="AI not available"
