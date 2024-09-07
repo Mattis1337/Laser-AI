@@ -11,6 +11,10 @@ import datasets
 import data_transformations as dt
 
 
+OUTPUTS_WHITE: dict[str, int] = dt.targets_to_tensor(c.WHITE)
+OUTPUTS_BLACK: dict[str, int] = dt.targets_to_tensor(c.BLACK)
+
+
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class
 class NeuralNetwork(nn.Module):
@@ -223,11 +227,20 @@ def generate_move(color, fen, amount_outputs=1):
     # turning the array into tensor
     x = dt.to_tensor(x_)
 
+    outputs: dict[str, int]
+    match color:
+        case c.WHITE:
+            outputs = OUTPUTS_WHITE
+        case c.BLACK:
+            outputs = OUTPUTS_BLACK
+        case _:
+            raise ValueError("Expected variable color to be of type bool but received" + type(color))
+
     with torch.no_grad():
         pred = model(x)
         pred = dt.tensor_to_targets(pred,
                                     color,
-                                    dt.targets_to_tensor(color),
+                                    outputs,
                                     annotation=True,
                                     amount_targets=amount_outputs)
 
