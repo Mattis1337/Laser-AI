@@ -1,5 +1,9 @@
 import client
 import chess
+import atexit
+
+
+BOARD: chess.Board
 
 
 def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color):
@@ -15,12 +19,13 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
     """
 
     try:
-        board = chess.Board(fen)
+        global BOARD
+        BOARD = chess.Board(fen)
     except ValueError:
         print("Invalid FEN code provided in command arguments!")
         exit(1)
 
-    print (
+    print(
         "\n" +
         "Please express the moves you want to play " +
         "by writing down the square of the piece you want to move " +
@@ -28,20 +33,19 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
         "\nHint: That notation is called Universal Chess Interface (UCI)"
     )
 
-    while not board.is_game_over():
+    while not BOARD.is_game_over():
         # print beautiful CLI chess board
-        print_board(board, unicode, side=not ai_color)
+        print_board(BOARD, unicode, side=not ai_color)
         # generate move
-        if board.turn is ai_color:
-            move = client.request_ai_move(board, url=ai_host, retries=5)
+        if BOARD.turn is ai_color:
+            move = client.request_ai_move(BOARD, url=ai_host, retries=5)
             if move is None:
                 print("AI couldn't generate move! Is the server set up properly?")
                 break
         else:
-            move = client.request_user_move(board)
+            move = client.request_user_move(BOARD)
         # play move
-        board.push(move)
-    print(f"Final board state is '{board.fen()}'")
+        BOARD.push(move)
 
 
 def print_board(board: chess.Board, unicode: bool, side: chess.Color):
@@ -74,3 +78,11 @@ def print_board(board: chess.Board, unicode: bool, side: chess.Color):
         empty_square=".",
         orientation=side,
     ))
+
+
+def exit_handler():
+    if BOARD is not None:
+        print(f"Final board state is '{BOARD.fen()}'")
+
+
+atexit.register(exit_handler)
