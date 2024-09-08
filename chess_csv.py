@@ -1,5 +1,6 @@
 import os
 import glob
+import itertools
 import pandas as pd
 
 import chess_annotation as annotation
@@ -10,6 +11,7 @@ os.makedirs(pgn_dir, exist_ok=True)
 
 # your local directory containing the CSV/ folder
 csv_dir = r"CSV"
+os.makedirs(csv_dir, exist_ok=True)
 # the paths to save the training data to
 white_games_csv: str = os.path.join(csv_dir, r"white_games.csv")
 black_games_csv: str = os.path.join(csv_dir, r"black_games.csv")
@@ -18,13 +20,39 @@ white_moves_csv: str = os.path.join(csv_dir, r"white_moves.csv")
 black_moves_csv: str = os.path.join(csv_dir, r"black_moves.csv")
 
 
-def get_pgn_paths(directory: str) -> list[str]:
+def get_pgn_paths(directory: str, chunks: int = 1) -> list[tuple[str]]:
     """
     Gets all the fs paths to PGN files that should be read and converted to bitboards.
-    :param directory: The folder containing the PGNs to scan
-    :return: A list of all PGN files in the game_dir
+    Then they are partitioned into multiple small arrays. 
+
+    Args:
+        directory (str): The folder containing the PGNs to scan
+        chunks (int): Natural number above 0 and less than the amount of files in the directory
+            that represents the amount of subarrays to create
+
+    Raises:
+        FileNotFoundError: glob doesn't raise an error if the directory is empty,
+            but there is no need to execute the script any further without PGN files
+
+    Returns:
+        list[tuple[str]]: A list that contains tuples of evenly distributed PGN files in the target directory
     """
-    return glob.glob(os.path.join(directory, "*.pgn"))
+    # gets all the paths to files that end with .pgn
+    pgn_file_paths: list[str] = glob.glob(os.path.join(directory, "*.pgn"))
+
+    if not pgn_file_paths:
+        raise FileNotFoundError(f"No PGN files found in {directory}.")
+
+    if chunks < 1:
+        print("'chunks' must be a natural number and not 0 because the resulting array can't be divided by 0!")
+        chunks = 1
+
+    if chunks > len(pgn_file_paths):
+        print(f"'chunks' must be smaller than the amount of files in {directory}.")
+        chunks = len(pgn_file_paths)
+
+    # slices list into smaller chuncks
+    return list(itertools.batched(pgn_file_paths, chunks))
 
 
 def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
@@ -146,3 +174,7 @@ def create_csvs():
        white_moves_path=white_moves_csv,
        black_moves_path=black_moves_csv
     )
+
+
+if __name__ == "__main__":
+    create_csvs
