@@ -2,6 +2,7 @@ import os
 import glob
 from typing import Iterator
 import itertools
+from multiprocessing import Process
 import pandas as pd
 
 import chess_annotation as annotation
@@ -116,7 +117,25 @@ def write_csv(data, path: str):
     df.to_csv(path, mode="a", header=False, index=False)
 
 
-def convert_multiple_pgns_to_csv(pgn_file_paths: list[str], white_games_path: str, black_games_path: str):
+def convert_multiple_pgns_to_csv(
+    pgn_file_paths: tuple[list],
+    white_games_path: str,
+    black_games_path: str,
+):
+    for path in pgn_file_paths:
+        white_data, black_data = convert_single_pgn_to_csv(pgn_path=path)
+        # writes the data
+        write_csv(data=white_data, path=white_games_path)
+        write_csv(data=black_data, path=black_games_path)
+        # debug information
+        print(f"[CSV] Wrote data from {path}!")
+
+
+def all_pgns_to_csv(
+    pgn_file_paths: Iterator[tuple[str]],
+    white_games_path: str,
+    black_games_path: str,
+):
     """
     Converts a list of PGN files to bitboards and saves them in two separate CSVs;
     One for black's moves and one for white's.
@@ -124,14 +143,19 @@ def convert_multiple_pgns_to_csv(pgn_file_paths: list[str], white_games_path: st
     :param white_games_path: The location of the white side's CSV
     :param black_games_path: The location of the black side's CSV
     """
-    for path in pgn_file_paths:  # iterates through every file
-        # converts PGN to CSV
-        white_data, black_data = convert_single_pgn_to_csv(pgn_path=path)
-        # writes the data
-        write_csv(data=white_data, path=white_games_path)
-        write_csv(data=black_data, path=black_games_path)
-        # debug information
-        print(f"[CSV] Wrote data from {path}!")
+    processes: list[Process] = []
+    for i, chunk in enumerate(pgn_file_paths):  # iterates through every file
+        process = Process(target=convert_multiple_pgns_to_csv, args=(
+            chunk,
+            f"{white_games_path}-part{i}",
+            f"{black_games_path}-part{i}",
+        ))
+        process.start()
+        processes.append(process)
+
+    for process in processes:
+        process.join()
+
 
 
 def create_output(game_csv: str, save_path: str):
@@ -149,12 +173,17 @@ def create_output(game_csv: str, save_path: str):
 
 def create_csvs():
     # annotation.pgn_to_bitboards_snapshots()
-    pgn_files: Iterator[tuple[str]] = get_pgn_paths(pgn_dir)
-    convert_multiple_pgns_to_csv(
+    pgn_files: Iterator[tuple[str]] = get_pgn_paths(
+        pgn_dir,
+        chunk_amount=os.cpu_count()
+    )
+
+    all_pgns_to_csv(
        pgn_file_paths=pgn_files,
        white_games_path=white_games_csv,
        black_games_path=black_games_csv
     )
+
     create_output(game_csv=white_games_csv, save_path=white_moves_csv)
     print(f"[CSV] Created white outputs successfully in {white_moves_csv}")
     create_output(game_csv=black_games_csv, save_path=black_moves_csv)
