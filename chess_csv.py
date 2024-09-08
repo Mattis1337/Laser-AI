@@ -1,5 +1,6 @@
 import os
 import glob
+from typing import Iterator
 import itertools
 import pandas as pd
 
@@ -20,7 +21,7 @@ white_moves_csv: str = os.path.join(csv_dir, r"white_moves.csv")
 black_moves_csv: str = os.path.join(csv_dir, r"black_moves.csv")
 
 
-def get_pgn_paths(directory: str, chunks: int = 1) -> list[tuple[str]]:
+def get_pgn_paths(directory: str, chunks: int = 1) -> Iterator[tuple[str]]:
     """
     Gets all the fs paths to PGN files that should be read and converted to bitboards.
     Then they are partitioned into multiple small arrays. 
@@ -35,7 +36,7 @@ def get_pgn_paths(directory: str, chunks: int = 1) -> list[tuple[str]]:
             but there is no need to execute the script any further without PGN files
 
     Returns:
-        list[tuple[str]]: A list that contains tuples of evenly distributed PGN files in the target directory
+        Iterator[tuple[str]]: A list that contains tuples of evenly distributed PGN files in the target directory
     """
     # gets all the paths to files that end with .pgn
     pgn_file_paths: list[str] = glob.glob(os.path.join(directory, "*.pgn"))
@@ -52,7 +53,7 @@ def get_pgn_paths(directory: str, chunks: int = 1) -> list[tuple[str]]:
         chunks = len(pgn_file_paths)
 
     # slices list into smaller chuncks
-    return list(itertools.batched(pgn_file_paths, chunks))
+    return itertools.batched(pgn_file_paths, chunks)
 
 
 def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
@@ -145,21 +146,6 @@ def create_one_output(game_csv: str, save_path: str):
     moves.to_csv(save_path, header=False, index=False)
 
 
-def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_moves_path: str):
-    """
-    Creates a list of moves the AI will be able to generate using all moves played in the dataset.
-    See also: create_one_output()
-    :param white_csv: The path to the white dataset
-    :param black_csv: The path to the black dataset
-    :param white_moves_path: The white output CSV's path
-    :param black_moves_path: The black output CSV's path
-    """
-    create_one_output(game_csv=white_csv, save_path=white_moves_path)
-    print(f"[CSV] Created white outputs successfully in {white_moves_path}")
-    create_one_output(game_csv=black_csv, save_path=black_moves_path)
-    print(f"[CSV] Created black outputs successfully in {black_moves_path}")
-
-
 def create_csvs():
     # annotation.pgn_to_bitboards_snapshots()
     print(get_pgn_paths(pgn_dir))
@@ -168,13 +154,11 @@ def create_csvs():
        white_games_path=white_games_csv,
        black_games_path=black_games_csv
     )
-    create_outputs(
-       white_csv=white_games_csv,
-       black_csv=black_games_csv,
-       white_moves_path=white_moves_csv,
-       black_moves_path=black_moves_csv
-    )
+    create_one_output(game_csv=white_games_csv, save_path=white_moves_csv)
+    print(f"[CSV] Created white outputs successfully in {white_moves_csv}")
+    create_one_output(game_csv=black_games_csv, save_path=black_moves_csv)
+    print(f"[CSV] Created black outputs successfully in {black_moves_csv}")
 
 
 if __name__ == "__main__":
-    create_csvs
+    create_csvs()

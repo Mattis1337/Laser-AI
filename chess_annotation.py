@@ -1,5 +1,6 @@
 import chess
 import chess.pgn
+from typing import TextIO 
 
 
 # CONVERTING ANNOTATIONS
