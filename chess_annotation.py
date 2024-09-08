@@ -27,8 +27,8 @@ def get_bitboards(board: chess.Board) -> list[int]:
         for piece_type in chess.PIECE_TYPES:
             # gets bitboard of piece type and color
             bitboard: int = board.pieces_mask(
-                piece_type=piece_type,
-                color=color
+                piece_type,
+                color,
             )
             bitboards.append(bitboard)
 
@@ -36,6 +36,16 @@ def get_bitboards(board: chess.Board) -> list[int]:
 
 
 def fen_to_bitboards(fen: str) -> list[int]:
+    """
+    Parses a FEN code to a chess.Board instance and then generates the bitboards.
+    See also: get_bitboards(chess.Board)
+
+    Args:
+        fen (str): The FEN code to convert
+
+    Returns:
+        list[int]: A list containing the 12 bitboards
+    """
     try:
         board = chess.Board(fen)
     except ValueError:
@@ -50,23 +60,29 @@ def fen_to_bitboards(fen: str) -> list[int]:
 #     print(format(bb, '064b'))
 
 
-def pgn_to_bitboards_final(pgn):
+def pgn_to_bitboards_final(pgn: TextIO) -> list[int]:
     """
     Plays every move of a PGN file and saves the last board state as a bitboard.
-    :param pgn: The PGN file to read
-    :return: The final bitboard. NULLABLE!
+    See also: get_bitboards(chess.Board)
+
+    Args:
+        pgn (TextIO): The handle of the PGN file to read
+
+    Returns:
+        list[int]: The final board state represented by 12 bitboards.
     """
     try:
         game = chess.pgn.read_game(pgn)  # loads game in
         board = game.board()
-    except ValueError:
-        return None
+    except AttributeError:
+        print("Invalid Portable Game Format!")
+        return []
 
     # iterates every move
     for move in game.mainline_moves():
         board.push(move)  # plays current move
 
-    return fen_to_bitboards(board.fen())
+    return get_bitboards(board)
 
 
 def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
@@ -89,7 +105,7 @@ def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
     try:
         game = chess.pgn.read_game(pgn)  # loads game in
         board = game.board()
-    except (IOError, OSError, ValueError):
+    except AttributeError:
         print("Invalid Portable Game Format!")
         return states, moves
 
@@ -107,20 +123,25 @@ def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
     return states, moves
 
 
-def print_bitboard(bitboard):
+def print_bitboard(bitboard: int):
     """
     Prints a bitboard in human-readable format to standard output.
-    :param bitboard: The bitboard to print
+
+    Args:
+        bitboard (int): The bitboard to print
     """
     binary = format(bitboard, '064b')    # converts int to binary
     formatted = '\n'.join([binary[i:i + 8] for i in range(0, len(binary), 8)])  # inserts linebreaks representing rows
     print(formatted)
 
 
-def print_type_bitboards(bitboards):
+def print_bitboards(bitboards: list[int]):
     """
-    Prints every piece bitboard and the piece type it is representing to standard output in a human-readable format.
-    :param bitboards: An array of 12 piece bitboards created by fen_to_bitboards
+    Prints the bitboards returned by the get_bitboards() function and the piece type it is representing
+    to standard output in a human-readable format.
+
+    Args:
+        bitboards (list[int]): An array of 12 piece bitboards created by fen_to_bitboards
     """
     for i, color in enumerate(chess.COLOR_NAMES[::-1]):  # slicing reverses list because COLOR_NAMES is mirrored
         for j, piece in enumerate(chess.PIECE_NAMES[1:]):   # slicing removes first element which would be None
