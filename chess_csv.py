@@ -4,6 +4,7 @@ from typing import Iterator
 import itertools
 from multiprocessing import Process
 import pandas as pd
+import shutil
 
 import chess_annotation as annotation
 
@@ -131,10 +132,44 @@ def convert_multiple_pgns_to_csv(
         print(f"[CSV] Wrote data from {path}!")
 
 
+def merge_multiple_files(file_paths: list[str], result_path: str, override_clone: bool = False, delete_orig: bool = False):
+    """
+    Merges multiple files into another one no matter their encoding.
+    It can optionally delete the original files.
+
+    Args:
+        file_paths (list[str]): Paths to the files to merge the contents of
+        result_path (str): The file to write the result to
+        override_clone (bool): Whether to delete the contents of the target file if it wasn't empty. Defaults to False.
+        delete_orig (bool, optional): Whether to delete the original files or not. Defaults to False.
+    """
+    write_mode = 'ab'
+    if override_clone:
+        write_mode = 'wb'
+
+    with open(file=result_path, mode=write_mode) as result_file:
+        for path in file_paths:
+            # prevent errors
+            if not os.path.exists(path):
+                continue
+            # concatenation
+            try:
+                with open(path,'rb') as input_file:
+                    shutil.copyfileobj(input_file, result_file)
+            except (IOError, OSError) as error:
+                print(f"File at {path} coudln't be read or merged: {error}")
+            # delete originals if toggled
+            if delete_orig:
+                os.remove(path)
+    
+
+
 def all_pgns_to_csv(
     pgn_file_paths: Iterator[tuple[str]],
     white_games_path: str,
     black_games_path: str,
+    merge_old_csv: bool = False,
+    delete_csv_fragments: bool = True,
 ):
     """
     Converts a list of PGN files to bitboards and saves them in two separate CSVs;
@@ -144,18 +179,33 @@ def all_pgns_to_csv(
     :param black_games_path: The location of the black side's CSV
     """
     processes: list[Process] = []
-    for i, chunk in enumerate(pgn_file_paths):  # iterates through every file
+    for i, chunk in enumerate(pgn_file_paths):
+        # creates a process and runs it on a seperate physical thread
         process = Process(target=convert_multiple_pgns_to_csv, args=(
             chunk,
+            # makes sure that no data is overriden because of race conditions
             f"{white_games_path}-part{i}",
             f"{black_games_path}-part{i}",
         ))
         process.start()
         processes.append(process)
 
+    # syncs process to prepare for merging process
     for process in processes:
         process.join()
 
+    merge_multiple_files(
+        file_paths=glob.glob(f"{white_games_path}-part*"),
+        result_path=white_games_path,
+        override_clone=not merge_old_csv,
+        delete_orig=delete_csv_fragments
+    )
+    merge_multiple_files(
+        file_paths=glob.glob(f"{black_games_path}-part*"),
+        result_path=black_games_path,
+        override_clone=not merge_old_csv,
+        delete_orig=delete_csv_fragments,
+    )
 
 
 def create_output(game_csv: str, save_path: str):
@@ -171,7 +221,7 @@ def create_output(game_csv: str, save_path: str):
     moves.to_csv(save_path, header=False, index=False)
 
 
-def create_csvs():
+def main():
     # annotation.pgn_to_bitboards_snapshots()
     pgn_files: Iterator[tuple[str]] = get_pgn_paths(
         pgn_dir,
@@ -181,7 +231,9 @@ def create_csvs():
     all_pgns_to_csv(
        pgn_file_paths=pgn_files,
        white_games_path=white_games_csv,
-       black_games_path=black_games_csv
+       black_games_path=black_games_csv,
+       merge_old_csv=False,
+       delete_csv_fragments=True,
     )
 
     create_output(game_csv=white_games_csv, save_path=white_moves_csv)
@@ -191,4 +243,4 @@ def create_csvs():
 
 
 if __name__ == "__main__":
-    create_csvs()
+    main()
