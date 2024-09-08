@@ -21,14 +21,14 @@ white_moves_csv: str = os.path.join(csv_dir, r"white_moves.csv")
 black_moves_csv: str = os.path.join(csv_dir, r"black_moves.csv")
 
 
-def get_pgn_paths(directory: str, chunks: int = 1) -> Iterator[tuple[str]]:
+def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]:
     """
     Gets all the fs paths to PGN files that should be read and converted to bitboards.
     Then they are partitioned into multiple small arrays. 
 
     Args:
         directory (str): The folder containing the PGNs to scan
-        chunks (int): Natural number above 0 and less than the amount of files in the directory
+        chunk_amount (int): Natural number above 0 and less than the amount of files in the directory
             that represents the amount of subarrays to create
 
     Raises:
@@ -44,16 +44,17 @@ def get_pgn_paths(directory: str, chunks: int = 1) -> Iterator[tuple[str]]:
     if not pgn_file_paths:
         raise FileNotFoundError(f"No PGN files found in {directory}.")
 
-    if chunks < 1:
-        print("'chunks' must be a natural number and not 0 because the resulting array can't be divided by 0!")
-        chunks = 1
+    if chunk_amount < 1:
+        print("'chunk_amount' must be a natural number and not 0 because the resulting array can't be divided by 0!")
+        chunk_amount = 1
 
-    if chunks > len(pgn_file_paths):
-        print(f"'chunks' must be smaller than the amount of files in {directory}.")
-        chunks = len(pgn_file_paths)
+    if chunk_amount > len(pgn_file_paths):
+        print(f"'chunk_amount' must be smaller than the amount of files in {directory}.")
+        chunk_amount = len(pgn_file_paths)
 
-    # slices list into smaller chuncks
-    return itertools.batched(pgn_file_paths, chunks)
+    # slices list into chunk_amount sections
+    chunk_size = len(pgn_file_paths) // chunk_amount
+    return itertools.batched(pgn_file_paths, chunk_size)
 
 
 def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
@@ -133,7 +134,7 @@ def convert_multiple_pgns_to_csv(pgn_file_paths: list[str], white_games_path: st
         print(f"[CSV] Wrote data from {path}!")
 
 
-def create_one_output(game_csv: str, save_path: str):
+def create_output(game_csv: str, save_path: str):
     """
     Gets all the moves written to the second column of one color's dataset and removes all duplicate moves.
     This will ensure that no under-fitting will occur as a result of the AI's outputs,
@@ -148,15 +149,15 @@ def create_one_output(game_csv: str, save_path: str):
 
 def create_csvs():
     # annotation.pgn_to_bitboards_snapshots()
-    print(get_pgn_paths(pgn_dir))
+    pgn_files: Iterator[tuple[str]] = get_pgn_paths(pgn_dir)
     convert_multiple_pgns_to_csv(
-       pgn_file_paths=get_pgn_paths(directory=pgn_dir),
+       pgn_file_paths=pgn_files,
        white_games_path=white_games_csv,
        black_games_path=black_games_csv
     )
-    create_one_output(game_csv=white_games_csv, save_path=white_moves_csv)
+    create_output(game_csv=white_games_csv, save_path=white_moves_csv)
     print(f"[CSV] Created white outputs successfully in {white_moves_csv}")
-    create_one_output(game_csv=black_games_csv, save_path=black_moves_csv)
+    create_output(game_csv=black_games_csv, save_path=black_moves_csv)
     print(f"[CSV] Created black outputs successfully in {black_moves_csv}")
 
 
