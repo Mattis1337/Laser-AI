@@ -1,10 +1,15 @@
+# managing files
 import os
 import glob
+import shutil
 from typing import Iterator
 import itertools
+# async
 from multiprocessing import Process
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+# parsing data
 import pandas as pd
-import shutil
 
 import chess_annotation as annotation
 
@@ -161,10 +166,9 @@ def merge_multiple_files(file_paths: list[str], result_path: str, override_clone
             # delete originals if toggled
             if delete_orig:
                 os.remove(path)
-    
 
 
-def all_pgns_to_csv(
+async def all_pgns_to_csv(
     pgn_file_paths: Iterator[tuple[str]],
     white_games_path: str,
     black_games_path: str,
@@ -194,18 +198,23 @@ def all_pgns_to_csv(
     for process in processes:
         process.join()
 
-    merge_multiple_files(
-        file_paths=glob.glob(f"{white_games_path}-part*"),
-        result_path=white_games_path,
-        override_clone=not merge_old_csv,
-        delete_orig=delete_csv_fragments
-    )
-    merge_multiple_files(
-        file_paths=glob.glob(f"{black_games_path}-part*"),
-        result_path=black_games_path,
-        override_clone=not merge_old_csv,
-        delete_orig=delete_csv_fragments,
-    )
+    # define preset for merging files on separate thread
+    async def run_merge(games_path: str):
+        await asyncio.to_thread(merge_multiple_files,
+            glob.glob(f"{games_path}-part*"),
+            games_path,
+            not merge_old_csv,
+            delete_csv_fragments,
+        )
+
+    # run threads
+    threads = [
+        run_merge(games_path=white_games_path),
+        run_merge(games_path=black_games_path),
+    ]
+
+    # await threads to finish
+    await asyncio.gather(*threads)
 
 
 def create_output(game_csv: str, save_path: str):
@@ -228,13 +237,13 @@ def main():
         chunk_amount=os.cpu_count()
     )
 
-    all_pgns_to_csv(
+    asyncio.run(all_pgns_to_csv(
        pgn_file_paths=pgn_files,
        white_games_path=white_games_csv,
        black_games_path=black_games_csv,
        merge_old_csv=False,
        delete_csv_fragments=True,
-    )
+    ))
 
     create_output(game_csv=white_games_csv, save_path=white_moves_csv)
     print(f"[CSV] Created white outputs successfully in {white_moves_csv}")
