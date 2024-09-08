@@ -23,6 +23,10 @@ def get_bitboards(board: chess.Board) -> list[int]:
     """
     bitboards: list[int] = []
 
+    if board is None or type(board) is not chess.Board:
+        print("chess.Board instance must be provided!")
+        return bitboards
+
     for color in chess.COLORS:
         for piece_type in chess.PIECE_TYPES:
             # gets bitboard of piece type and color
@@ -71,12 +75,18 @@ def pgn_to_bitboards_final(pgn: TextIO) -> list[int]:
     Returns:
         list[int]: The final board state represented by 12 bitboards.
     """
+    # loads game in
     try:
-        game = chess.pgn.read_game(pgn)  # loads game in
-        board = game.board()
-    except AttributeError:
+        game = chess.pgn.read_game(pgn)
+    except (OSError, IOError, FileNotFoundError) as error:
+        print("PGN file couldn't be read! " + error)
+        return []
+
+    if game is None:
         print("Invalid Portable Game Format!")
         return []
+
+    board = game.board()
 
     # iterates every move
     for move in game.mainline_moves():
@@ -102,23 +112,33 @@ def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
     states: list[list[int]] = []
     moves: list[str] = []
 
+    # loads game in
     try:
-        game = chess.pgn.read_game(pgn)  # loads game in
-        board = game.board()
-    except AttributeError:
+        game = chess.pgn.read_game(pgn)
+    except (OSError, IOError, FileNotFoundError) as error:
+        print("PGN file couldn't be read! " + error)
+        return states, moves
+
+    if game is None:
         print("Invalid Portable Game Format!")
         return states, moves
 
+    board = game.board()    
+
     # iterates through every move
     for move in game.mainline_moves():
-        # gets current bitboard
         bitboards: list[int] = get_bitboards(board)
-        states.append(bitboards)
         # converts move to Universal Chess Interface
         uci: str = board.uci(move)
-        moves.append(uci)
-        # plays next move
+
+        # plays next move if legal
+        if not board.is_legal(move):
+            print("Illegal move in PGN file!")
+            break
         board.push(move)
+
+        states.append(bitboards)
+        moves.append(uci)
 
     return states, moves
 
