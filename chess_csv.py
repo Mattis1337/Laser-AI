@@ -1,19 +1,21 @@
 import os
-from glob import glob
+import glob
 import pandas as pd
 
 import chess_annotation as annotation
 
 # the directory containing chess game representations in PGN format
 pgn_dir = r"Games"
+os.makedirs(pgn_dir, exist_ok=True)
+
 # your local directory containing the CSV/ folder
-local_csv_path = r"./"
+csv_dir = r"CSV"
 # the paths to save the training data to
-white_games_csv = r"CSV/white_games.csv"
-black_games_csv = r"CSV/black_games.csv"
+white_games_csv: str = os.path.join(csv_dir, r"white_games.csv")
+black_games_csv: str = os.path.join(csv_dir, r"black_games.csv")
 # the paths to save the outputs to
-white_moves_csv = r"CSV/white_moves.csv"
-black_moves_csv = r"CSV/black_moves.csv"
+white_moves_csv: str = os.path.join(csv_dir, r"white_moves.csv")
+black_moves_csv: str = os.path.join(csv_dir, r"black_moves.csv")
 
 
 def get_pgn_paths(directory: str) -> list[str]:
@@ -22,7 +24,7 @@ def get_pgn_paths(directory: str) -> list[str]:
     :param directory: The folder containing the PGNs to scan
     :return: A list of all PGN files in the game_dir
     """
-    return glob(os.path.join(directory, "*.pgn"))
+    return glob.glob(os.path.join(directory, "*.pgn"))
 
 
 def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
@@ -110,9 +112,9 @@ def create_one_output(game_csv: str, save_path: str):
     :param game_csv: A CSV file containing mappings of board states and moves, created by convert_png_to_csv()
     :param save_path: The path where the new CSV file should be saved at
     """
-    games = pd.read_csv(local_csv_path + game_csv)
+    games = pd.read_csv(game_csv)
     moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
-    moves.to_csv(local_csv_path + save_path, header=True, index=False)
+    moves.to_csv(save_path, header=False, index=False)
 
 
 def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_moves_path: str):
