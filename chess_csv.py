@@ -14,18 +14,18 @@ import pandas as pd
 import chess_annotation as annotation
 
 # the directory containing chess game representations in PGN format
-pgn_dir = r"Games"
-os.makedirs(pgn_dir, exist_ok=True)
+PGN_DIR = r"Games"
+os.makedirs(PGN_DIR, exist_ok=True)
 
 # your local directory containing the CSV/ folder
-csv_dir = r"CSV"
-os.makedirs(csv_dir, exist_ok=True)
+CSV_DIR = r"CSV"
+os.makedirs(CSV_DIR, exist_ok=True)
 # the paths to save the training data to
-white_games_csv: str = os.path.join(csv_dir, r"white_games.csv")
-black_games_csv: str = os.path.join(csv_dir, r"black_games.csv")
+WHITE_GAMES_CSV: str = os.path.join(CSV_DIR, r"white_games.csv")
+BLACK_GAMES_CSV: str = os.path.join(CSV_DIR, r"black_games.csv")
 # the paths to save the outputs to
-white_moves_csv: str = os.path.join(csv_dir, r"white_moves.csv")
-black_moves_csv: str = os.path.join(csv_dir, r"black_moves.csv")
+WHITE_MOVES_CSV: str = os.path.join(CSV_DIR, r"white_moves.csv")
+BLACK_MOVES_CSV: str = os.path.join(CSV_DIR, r"black_moves.csv")
 
 
 def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]:
@@ -206,6 +206,7 @@ async def all_pgns_to_csv(
             not merge_old_csv,
             delete_csv_fragments,
         )
+        print("[CSV] Merged CSV fragments for " + games_path)
 
     # run threads
     threads = [
@@ -228,27 +229,43 @@ def create_output(game_csv: str, save_path: str):
     games = pd.read_csv(game_csv)
     moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
     moves.to_csv(save_path, header=False, index=False)
+    print(f"[CSV] Created outputs successfully in {save_path}")
 
 
 def main():
-    # annotation.pgn_to_bitboards_snapshots()
+    # a list of tuples that contain paths to PGN files
+    # each tuple represents the data for each process
     pgn_files: Iterator[tuple[str]] = get_pgn_paths(
-        pgn_dir,
+        PGN_DIR,
         chunk_amount=os.cpu_count()
     )
 
+    # converts every move of the PGNs to bitboards
+    # and saves the values to CSVs
     asyncio.run(all_pgns_to_csv(
        pgn_file_paths=pgn_files,
-       white_games_path=white_games_csv,
-       black_games_path=black_games_csv,
+       white_games_path=WHITE_GAMES_CSV,
+       black_games_path=BLACK_GAMES_CSV,
        merge_old_csv=False,
        delete_csv_fragments=True,
     ))
 
-    create_output(game_csv=white_games_csv, save_path=white_moves_csv)
-    print(f"[CSV] Created white outputs successfully in {white_moves_csv}")
-    create_output(game_csv=black_games_csv, save_path=black_moves_csv)
-    print(f"[CSV] Created black outputs successfully in {black_moves_csv}")
+    # generates two csvs of moves the AI will be able to use
+    # each move is unique, no duplicates
+    white_outputs_process = Process(target=create_output, args=(
+        WHITE_GAMES_CSV,
+        WHITE_MOVES_CSV,
+    ))
+    white_outputs_process.start()
+
+    black_outputs_process = Process(target=create_output, args=(
+        BLACK_GAMES_CSV,
+        BLACK_MOVES_CSV,
+    ))
+    black_outputs_process.start()
+
+    white_outputs_process.join()
+    black_outputs_process.join()
 
 
 if __name__ == "__main__":
