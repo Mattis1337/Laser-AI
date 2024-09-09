@@ -123,14 +123,24 @@ def write_csv(data, path: str):
     df.to_csv(path, mode="a", header=False, index=False)
 
 
-def convert_multiple_pgns_to_csv(
+def pgns_to_csv(
     pgn_file_paths: tuple[list],
     white_games_path: str,
     black_games_path: str,
 ):
+    """
+    Converts the PGN files in the provided paths to bitboard and move pairs.
+    Then it saves the moves to two different CSVs
+
+    Args:
+        pgn_file_paths (tuple[list]): Paths of PGNs to convert
+        white_games_path (str): Path to CSV of black games
+        black_games_path (str): Path to CSV for black games
+    """
     for path in pgn_file_paths:
         white_data, black_data = convert_single_pgn_to_csv(pgn_path=path)
         # writes the data
+        # TODO(Samuil1337): Writing could be done on a separate thread
         write_csv(data=white_data, path=white_games_path)
         write_csv(data=black_data, path=black_games_path)
         # debug information
@@ -176,16 +186,22 @@ async def all_pgns_to_csv(
     delete_csv_fragments: bool = True,
 ):
     """
-    Converts a list of PGN files to bitboards and saves them in two separate CSVs;
-    One for black's moves and one for white's.
-    :param pgn_file_paths: The PGNs to parse
-    :param white_games_path: The location of the white side's CSV
-    :param black_games_path: The location of the black side's CSV
+    Converts tuples of PGN file paths to bitboards.
+    A new process is created for each tuple, so ensure the amount of length of the Iterator is sane.
+    Then the function saves them in two separate CSVs; One for black's moves and one for white's.
+
+    Args:
+        pgn_file_paths (Iterator[tuple[str]]): Tuples containing paths to PGN files.
+            A new process is created for each tuple 
+        white_games_path (str): Path to final CSV that consists of white's moves
+        black_games_path (str): Path to final CSV that consists of black's moves
+        merge_old_csv (bool, optional): Whether to keep the contents of the previous CSV if present. Defaults to False.
+        delete_csv_fragments (bool, optional): Whether to delete the temporary CSV of each process after merging them into one. Defaults to True.
     """
     processes: list[Process] = []
     for i, chunk in enumerate(pgn_file_paths):
         # creates a process and runs it on a seperate physical thread
-        process = Process(target=convert_multiple_pgns_to_csv, args=(
+        process = Process(target=pgns_to_csv, args=(
             chunk,
             # makes sure that no data is overriden because of race conditions
             f"{white_games_path}-part{i}",
@@ -208,13 +224,13 @@ async def all_pgns_to_csv(
         )
         print("[CSV] Merged CSV fragments for " + games_path)
 
-    # run threads
+    # run IO tasks on sepatate threads
     threads = [
         run_merge(games_path=white_games_path),
         run_merge(games_path=black_games_path),
     ]
 
-    # await threads to finish
+    # exit the function when all data is saved
     await asyncio.gather(*threads)
 
 
