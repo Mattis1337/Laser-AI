@@ -158,6 +158,13 @@ def merge_multiple_files(file_paths: list[str], result_path: str, override_clone
         override_clone (bool): Whether to delete the contents of the target file if it wasn't empty. Defaults to False.
         delete_orig (bool, optional): Whether to delete the original files or not. Defaults to False.
     """
+
+    if len(file_paths) < 1:
+        return
+
+    if len(file_paths) == 1:
+        shutil.move(file_paths[0], result_path)
+
     write_mode = 'ab'
     if override_clone:
         write_mode = 'wb'
