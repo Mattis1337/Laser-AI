@@ -10,8 +10,8 @@ import argparse
 import chess
 
 # importing own files
-#import datasets
-#import train_model
+import datasets
+import train_model
 import cli
 
 
@@ -75,7 +75,8 @@ def print_banner():
     print(f"\n Initial board state is '{FEN}'")
 
 
-#dataset = datasets.init_chess_dataset(c.BLACK)
+#dataset = datasets.init_chess_dataset(chess.BLACK)
+train_model.initialize_model(chess.BLACK)
 #train_model.train_chess_model(dataset, 20)
 
 URL, FEN, COLOR, UNICODE = register_arguments()

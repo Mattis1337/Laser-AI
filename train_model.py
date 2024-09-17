@@ -1,3 +1,6 @@
+import os.path
+
+import chess
 import chess as c
 import numpy as np
 import torch
@@ -54,6 +57,28 @@ class NeuralNetwork(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
+
+def initialize_model(color: chess.Color):
+    """
+    Creating a new model state by initializing an untrained model and
+    saving it to a desired path.
+    :param color: the type of model created
+    """
+    # getting the outputs matching the color for the topology
+    outputs = datasets.get_output_length(color)
+    # setting the fitting topology of an untrained network
+    model = NeuralNetwork(outputs)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+
+    # TODO: rework saving and loading of states to fit multiple states of
+    #  the same color type and make initialization more secure
+
+    # entering new path to save the model to
+    path = input('File to save new model state: ')
+
+    # saving untrained model with unused optimizer
+    save_trained_model(color, model, 0, optimizer, path)
 
 
 # Single iteration training
@@ -113,7 +138,7 @@ def test(dataloader, model, device):
             # calculate outputs by running game states through the network
             pred = model(image.to(device))
 
-            pred = dt.tensor_to_targets(pred, color, targets, amount_targets=1).to(device)
+            pred = dt.tensor_to_targets(pred, targets, amount_targets=1).to(device)
 
             if dt.compare_tensors(label[0].to(device), pred) is True:
                 total += 1
@@ -142,7 +167,7 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
 
     # loading the last checkpoints
-    state = load_model(dataset.__color__())
+    state, path = load_model()
     # casting the number of old outputs
     old_outputs = state['output_size']
 
@@ -189,7 +214,7 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
         if (epoch+1) % 20 == 0:
             # testing and saving the model after 20 epochs
             test(test_dataloader, model, device)
-            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer)
+            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer, path)
 
     # testing the model after all epochs
     test(test_dataloader, model, device)
@@ -197,7 +222,7 @@ def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
     print("Done!")
 
     # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer)
+    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer, path)
 
 
 def generate_move(color, fen, amount_outputs=1):
@@ -210,7 +235,7 @@ def generate_move(color, fen, amount_outputs=1):
     """
 
     # loading the model
-    state = load_model(color)
+    state, path = load_model()
 
     model = NeuralNetwork(datasets.get_output_length(color))
     model.load_state_dict(state['model_state_dict'])
@@ -247,27 +272,21 @@ def generate_move(color, fen, amount_outputs=1):
     return pred
 
 
-def load_model(color):
+def load_model():
     """
     Initialise a NeuralNetwork model using a .pth file to load
     the weights to the specified color of that model.
-    :param color: specifies what weights should be loaded
     """
 
-    if color is True:
-        state = torch.load('white_model.pth')
+    # TODO: adapt saving and loading system to different path names
+    path = input('Enter path to model: ')
 
-    elif color is False:
-        state = torch.load('black_model.pth')
+    state = torch.load(path)
 
-    else:
-        raise ValueError(f"Dataset must be either of the instance of {c.WHITE} or {c.BLACK} "
-                         f"but {color} was given.")
-
-    return state
+    return state, path
 
 
-def save_trained_model(color, model, epoch, optimizer):
+def save_trained_model(color, model, epoch, optimizer, path):
     """
     Saving a NeuralNetwork model after training in a specified file
     based off the color.
@@ -275,18 +294,11 @@ def save_trained_model(color, model, epoch, optimizer):
     :param model: the trained model which should be saved
     :param epoch: what epoch training was left on
     :param optimizer:  the  adjusted optimizer which was used
+    :param path: path to save the state to
     """
-    if color is True:
-        torch.save({'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'output_size': datasets.get_output_length(color)},
-                   'white_model.pth')
-        print(f"Saved PyTorch Current Model State to white_model.pth")
-    elif color is False:
-        torch.save({'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'output_size': datasets.get_output_length(color)},
-                   'black_model.pth')
-        print(f"Saved PyTorch Current Model State to black_model.pth")
+    torch.save({'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'output_size': datasets.get_output_length(color)},
+               path)
+    print(f"Saved PyTorch Current Model State to {path}")
