@@ -8,7 +8,9 @@ After that some info is printed to STDOUT and lastly the game starts.
 # import numpy as np
 import argparse
 import chess
+import os
 
+import chess_csv
 # importing own files
 import datasets
 import train_model
@@ -75,12 +77,36 @@ def print_banner():
     print(f"\n Initial board state is '{FEN}'")
 
 
-#dataset = datasets.init_chess_dataset(chess.BLACK)
-train_model.initialize_model(chess.BLACK)
-#train_model.train_chess_model(dataset, 20)
+def main():
+    """
+    Command Line User Interface
+    """
+
+    while True:
+        print('1) Start AI client' + '\n' +
+              '2) Train AI locally' + '\n' +
+              '3) Initialize new AI model')
+        option = int(input('Pick an option 1-3: '))
+
+        if option in range(1, 4):
+            break
+        print(f'Specified option {option} is invalid!')
+
+    match option:
+        case 1:
+            # Starting the client
+            cli.play_against_ai(FEN, UNICODE, ai_host=URL, ai_color=not COLOR)
+        case 2:
+            # Starting the training process
+            train_model.train_chess_model()
+        case 3:
+            # Starting the initialization process
+            train_model.initialize_model()
+
 
 URL, FEN, COLOR, UNICODE = register_arguments()
-print_banner()
-cli.play_against_ai(FEN, UNICODE, ai_host=URL, ai_color=not COLOR)
+
+if __name__ == "__main__":
+    main()
 
 print("Goodbye")

@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 
 # importing own files
 import chess_annotation
+import chess_csv
 import datasets
 import data_transformations as dt
 
@@ -59,26 +60,37 @@ class NeuralNetwork(nn.Module):
         return x
 
 
-def initialize_model(color: chess.Color):
+def initialize_model():
     """
     Creating a new model state by initializing an untrained model and
     saving it to a desired path.
-    :param color: the type of model created
     """
+    # getting the wanted colour
+    while True:
+        print('Following color options: ' + '\n' +
+              '1) Black' + '\n' +
+              '2) White')
+
+        col_index = int(input('Pick an option 1-2:'))
+        if col_index in [1, 2]:
+            break
+        print(f'Specified option {col_index} is invalid!')
+
+    if col_index == 1:
+        color = chess.BLACK
+    else:
+        color = chess.WHITE
     # getting the outputs matching the color for the topology
     outputs = datasets.get_output_length(color)
     # setting the fitting topology of an untrained network
     model = NeuralNetwork(outputs)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
-    # TODO: rework saving and loading of states to fit multiple states of
-    #  the same color type and make initialization more secure
-
     # entering new path to save the model to
-    path = input('File to save new model state: ')
+    path = input('Insert name for the new model state (.pth will be appended!): ')
 
     # saving untrained model with unused optimizer
-    save_trained_model(color, model, 0, optimizer, path)
+    save_trained_model(color, model, 0, optimizer, 'models/'+path+'.pth')
 
 
 # Single iteration training
@@ -151,23 +163,38 @@ def test(dataloader, model, device):
 
 
 # full iterations training
-def train_chess_model(dataset: datasets.ChessDataset, epochs: int) -> None:
+def train_chess_model() -> None:
     """
     This function will train a neural network by creating an instance of
     the neural network class loading the according weights onto it and then
     using the given dataset to train.
-    :param dataset: instance of a custom dataset class
-    :param epochs: number of epochs of training
     """
 
-    # Reference for handling changing dimensions
-    # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
-
-    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
-    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
+    while True:
+        try:
+            epochs = int(input('Set number of epochs of learning: '))
+            break
+        except ValueError:
+            print(f'Expected epochs to be of type {int}!')
 
     # loading the last checkpoints
     state, path = load_model()
+    # casting state entry for color of type chess.COLORS
+    color = state['color']
+    # initializing the dataset
+    if color == c.BLACK:
+        dataset = datasets.init_chess_dataset(chess.BLACK)
+    elif color == c.WHITE:
+        dataset = datasets.init_chess_dataset(chess.WHITE)
+    else:
+        raise ValueError(f'Model state corrupted! Expected type {chess.COLORS} for state key color but got {type(color)}')
+
+    # Initializing Dataloaders
+    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
+    # Reference for handling changing dimensions
+    # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
+
     # casting the number of old outputs
     old_outputs = state['output_size']
 
@@ -272,16 +299,33 @@ def generate_move(color, fen, amount_outputs=1):
     return pred
 
 
-def load_model():
+def load_model(path='black_model.pth'):
     """
-    Initialise a NeuralNetwork model using a .pth file to load
-    the weights to the specified color of that model.
+    Loading a saved model (.pth)
+    :param path: name of the default file for loading
     """
 
-    # TODO: adapt saving and loading system to different path names
-    path = input('Enter path to model: ')
+    # Getting color from user
+    if path is not None:
+        while True:
+            print('Please pick one of the following model states to resume training!')
+            # Printing the name of each model state
+            files = os.listdir('models/')
+            for i, file in enumerate(files):
+                print(f'{i}) {file}')
 
-    state = torch.load(path)
+            option = input(f'Pick model for loading (0-{len(files)-1}): ')
+            try:
+                option = int(option)
+            except ValueError:
+                print(f'Expected value parsable to type {int} but recieved value {option}!')
+                pass
+
+            if 0 <= option < len(files):
+                path = files[option]
+                break
+
+    state = torch.load('models/'+path)
 
     return state, path
 
@@ -296,7 +340,9 @@ def save_trained_model(color, model, epoch, optimizer, path):
     :param optimizer:  the  adjusted optimizer which was used
     :param path: path to save the state to
     """
-    torch.save({'epoch': epoch,
+    torch.save({
+                'color': color,
+                'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'output_size': datasets.get_output_length(color)},
