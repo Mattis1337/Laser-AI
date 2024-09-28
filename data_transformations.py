@@ -65,7 +65,6 @@ def transform_bitboards(bitboards):
     return byteboard
 
 
-# TODO: new function which decodes the targets
 def targets_to_tensor(color) -> dict:
     # setting the input dimensions
     output_dimension = [datasets.get_output_length(color)]

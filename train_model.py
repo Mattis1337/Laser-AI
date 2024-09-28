@@ -169,7 +169,7 @@ def train_chess_model() -> None:
     the neural network class loading the according weights onto it and then
     using the given dataset to train.
     """
-
+    # Getting the number of epochs
     while True:
         try:
             epochs = int(input('Set number of epochs of learning: '))
@@ -179,15 +179,8 @@ def train_chess_model() -> None:
 
     # loading the last checkpoints
     state, path = load_model()
-    # casting state entry for color of type chess.COLORS
-    color = state['color']
     # initializing the dataset
-    if color == c.BLACK:
-        dataset = datasets.init_chess_dataset(chess.BLACK)
-    elif color == c.WHITE:
-        dataset = datasets.init_chess_dataset(chess.WHITE)
-    else:
-        raise ValueError(f'Model state corrupted! Expected type {chess.COLORS} for state key color but got {type(color)}')
+    dataset = datasets.init_chess_dataset(state['color'])
 
     # Initializing Dataloaders
     train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
@@ -199,14 +192,9 @@ def train_chess_model() -> None:
     old_outputs = state['output_size']
 
     # getting the device which should be used for training
-    device = (
-        "cuda"
-        if torch.cuda.is_available()
-        else "cpu"
-    )
-    print(f"Currently using {device} device!")
+    device = get_training_device()
 
-    # loading the model
+    # Initializing NeuralNetwork
     model = NeuralNetwork(old_outputs).to(device)
 
     # Setting the module parameters
@@ -230,7 +218,6 @@ def train_chess_model() -> None:
 
     # setting model into training mode
     model.train()
-
     last_epoch = state['epoch']
 
     # Train the network for the set epoch size
@@ -348,3 +335,21 @@ def save_trained_model(color, model, epoch, optimizer, path):
                 'output_size': datasets.get_output_length(color)},
                path)
     print(f"Saved PyTorch Current Model State to {path}")
+
+
+def get_training_device():
+    """
+    Looks for available torch devices and returns the highest available
+    """
+
+    device = (
+        # firstly checks if cuda is available
+        "cuda"
+        if torch.cuda.is_available()
+        # if not the cpu will be used for training
+        else "cpu"
+    )
+    # debug message
+    print(f"Currently using {device} device!")
+
+    return device
