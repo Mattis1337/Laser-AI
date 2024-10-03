@@ -16,7 +16,7 @@ class ChessDataset(Dataset):
         self.data, self.labels = prepare_chess_data(img_dir)
         self.color = color
         self.transform = transform
-        self.targets_transformed = dt.targets_to_tensor(color)
+        self.targets_transformed = dt.targets_to_numericals(color)
 
     def __len__(self) -> int:
         return len(self.labels)

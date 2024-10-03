@@ -15,8 +15,8 @@ import datasets
 import data_transformations as dt
 
 
-OUTPUTS_WHITE: dict[str, int] = dt.targets_to_tensor(c.WHITE)
-OUTPUTS_BLACK: dict[str, int] = dt.targets_to_tensor(c.BLACK)
+OUTPUTS_WHITE: dict[str, int] = dt.targets_to_numericals(c.WHITE)
+OUTPUTS_BLACK: dict[str, int] = dt.targets_to_numericals(c.BLACK)
 
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
@@ -121,9 +121,9 @@ def train(dataloader, model, criterion, optimizer, device):
 
         # statistics ...
         running_loss += loss
-        if (batch+1) % 1000 == 0:
+        if (batch+1) % 10000 == 0:
             current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * 1000):>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {running_loss / (dataloader.batch_size * 10000):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
 
     print("Epoch done!")
@@ -139,20 +139,18 @@ def test(dataloader, model, device):
     """
 
     total = 0
-    # possible_targets = datasets.get_output_length(dataloader.dataset.__color__())
-    color = dataloader.dataset.__color__()
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for i, data in enumerate(dataloader):
             image, label = data
-            targets = dataloader.dataset.__gettargets__()
 
             # calculate outputs by running game states through the network
             pred = model(image.to(device))
+            # getting the highest match of the AI output
+            pred = dt.get_highest_index(pred, 1)
 
-            pred = dt.tensor_to_targets(pred, targets, amount_targets=1).to(device)
-
-            if dt.compare_tensors(label[0].to(device), pred) is True:
+            # comparing if the AI's match is the same as the output
+            if int(label[0]) == int(pred[0][0]):
                 total += 1
 
             if (i+1) % 10000 == 0:
@@ -225,18 +223,17 @@ def train_chess_model() -> None:
         print(f"Epoch {epoch+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer, device)
 
-        if (epoch+1) % 20 == 0:
-            # testing and saving the model after 20 epochs
-            test(test_dataloader, model, device)
+        if (epoch+1) % 5 == 0:
+            # saving the model after 5 epochs
             save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer, path)
+
+    # saving the model after it finished training
+    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
     test(test_dataloader, model, device)
 
     print("Done!")
-
-    # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer, path)
 
 
 def generate_move(color, fen, amount_outputs=1):

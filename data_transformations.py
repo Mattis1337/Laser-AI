@@ -65,9 +65,12 @@ def transform_bitboards(bitboards):
     return byteboard
 
 
-def targets_to_tensor(color) -> dict:
-    # setting the input dimensions
-    output_dimension = [datasets.get_output_length(color)]
+def targets_to_numericals(color) -> dict:
+    """
+    Decodes every move in a file by taking its index and returning it with a dict.
+    :param color: which set of moves should be decoded
+    """
+
     targets = []
     if type(color) is not bool:
         raise ValueError(f"Expected type {chess.COLORS} but received type {type(color)}")
@@ -93,7 +96,7 @@ def tensor_to_targets(tensor: torch.Tensor, targets: dict, amount_targets=1):
     Return the fitting tensor (for further calculations) or the fitting notation (for generating moves)
     to a given tensor based off a given dictionary.
     :param tensor: input tensor with non integer values
-    :param targets: a dictionary created by targets_to_tensor containing fitting notation to a possible target tensor
+    :param targets: a dictionary created by targets_to_numericals containing fitting notation to a possible target tensor
     :param amount_targets: how big the amount of highest ranking annotations should be
     """
 
