@@ -248,7 +248,7 @@ def generate_move(color, fen, amount_outputs=1):
     # loading the model
     state, path = load_model()
 
-    model = NeuralNetwork(datasets.get_output_length(color))
+    model = NeuralNetwork(state['output_size'])
     model.load_state_dict(state['model_state_dict'])
     model.eval()
 
@@ -283,7 +283,7 @@ def generate_move(color, fen, amount_outputs=1):
     return pred
 
 
-def load_model(path='black_model.pth'):
+def load_model(path=None):
     """
     Loading a saved model (.pth)
     :param path: name of the default file for loading
@@ -292,7 +292,7 @@ def load_model(path='black_model.pth'):
     # Getting color from user
     if path is not None:
         while True:
-            print('Please pick one of the following model states to resume training!')
+            print('Please pick one of the following model states!')
             # Printing the name of each model state
             files = os.listdir('models/')
             for i, file in enumerate(files):
@@ -308,6 +308,8 @@ def load_model(path='black_model.pth'):
             if 0 <= option < len(files):
                 path = files[option]
                 break
+    else:
+        path = 'uci_black_model.pth'
 
     state = torch.load('models/'+path)
 
