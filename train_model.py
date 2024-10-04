@@ -90,7 +90,7 @@ def initialize_model():
     path = input('Insert name for the new model state (.pth will be appended!): ')
 
     # saving untrained model with unused optimizer
-    save_trained_model(color, model, 0, optimizer, 'models/'+path+'.pth')
+    save_trained_model(color, model, 0, optimizer, path+'.pth')
 
 
 # Single iteration training
@@ -218,6 +218,9 @@ def train_chess_model() -> None:
     model.train()
     last_epoch = state['epoch']
 
+    # Printing info
+    print(f'Resuming training at epoch {last_epoch}!')
+
     # Train the network for the set epoch size
     for epoch in range(epochs):
         print(f"Epoch {epoch+1}\n-------------------------------")
@@ -290,7 +293,7 @@ def load_model(path=None):
     """
 
     # Getting color from user
-    if path is not None:
+    if path is None:
         while True:
             print('Please pick one of the following model states!')
             # Printing the name of each model state
@@ -302,13 +305,16 @@ def load_model(path=None):
             try:
                 option = int(option)
             except ValueError:
-                print(f'Expected value parsable to type {int} but recieved value {option}!')
+                print(f'Expected value parsable to type {int} but recieved value {type(option)}!')
                 pass
 
             if 0 <= option < len(files):
                 path = files[option]
                 break
+            else:
+                print(f'Option {option} is out of bounds!')
     else:
+        # TODO: Add mechanism for server to choose AI model
         path = 'uci_black_model.pth'
 
     state = torch.load('models/'+path)
@@ -332,7 +338,7 @@ def save_trained_model(color, model, epoch, optimizer, path):
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'output_size': datasets.get_output_length(color)},
-               path)
+               'models/'+path)
     print(f"Saved PyTorch Current Model State to {path}")
 
 
