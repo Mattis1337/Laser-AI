@@ -138,6 +138,8 @@ def test(dataloader, model, device):
     :param device: the device currently used for training
     """
 
+    model.eval()
+
     total = 0
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
@@ -158,6 +160,7 @@ def test(dataloader, model, device):
                 break
 
     print(f'Accuracy of the network: {total/100}%')
+    model.train()
 
 
 # full iterations training
@@ -175,13 +178,16 @@ def train_chess_model() -> None:
         except ValueError:
             print(f'Expected epochs to be of type {int}!')
 
+    # disabling debugging APIs
+    set_debug_apis(False)
+
     # loading the last checkpoints
     state, path = load_model()
     # initializing the dataset
     dataset = datasets.init_chess_dataset(state['color'])
 
     # Initializing Dataloaders
-    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
     test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
     # Reference for handling changing dimensions
     # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
@@ -358,3 +364,16 @@ def get_training_device():
     print(f"Currently using {device} device!")
 
     return device
+
+
+def set_debug_apis(state: bool):
+    """
+    Disabling or enabling various debug APIs to enhance regular training without debugging / testing.
+    https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html
+    :param state: set APIs to True or False
+    """
+    torch.autograd.set_detect_anomaly(state)
+    torch.autograd.profiler.emit_nvtx = state
+    # The following docs elaborate on the usage of the profiler
+    # https://pytorch.org/docs/stable/profiler.html
+    torch.autograd.profiler.profile = state
