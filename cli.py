@@ -17,8 +17,7 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
         ai_host (str): URL of AI server
         ai_color (chess.Color): Side of AI
     """
-    # registering exit handler
-    atexit.register(exit_handler)
+
     try:
         global BOARD
         BOARD = chess.Board(fen)
@@ -26,6 +25,8 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
         print("Invalid FEN code provided in command arguments!")
         exit(1)
 
+    # registering exit handler after board initialization
+    atexit.register(exit_handler)
     print(
         "\n" +
         "Please express the moves you want to play " +
