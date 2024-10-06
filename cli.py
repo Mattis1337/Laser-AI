@@ -17,7 +17,8 @@ def play_against_ai(fen: str, unicode: bool, ai_host: str, ai_color: chess.Color
         ai_host (str): URL of AI server
         ai_color (chess.Color): Side of AI
     """
-
+    # registering exit handler
+    atexit.register(exit_handler)
     try:
         global BOARD
         BOARD = chess.Board(fen)
@@ -83,6 +84,3 @@ def print_board(board: chess.Board, unicode: bool, side: chess.Color):
 def exit_handler():
     if BOARD is not None:
         print(f"Final board state is '{BOARD.fen()}'")
-
-
-atexit.register(exit_handler)
