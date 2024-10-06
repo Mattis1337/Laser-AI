@@ -8,6 +8,7 @@ After that some info is printed to STDOUT and lastly the game starts.
 # import numpy as np
 import argparse
 import chess
+import torch
 
 # importing own files
 import train_model
@@ -98,7 +99,7 @@ def main():
             train_model.train_chess_model()
         case 3:
             # Starting the initialization process
-            train_model.initialize_model()
+            train_model.init_new_model()
 
 
 URL, FEN, COLOR, UNICODE = register_arguments()

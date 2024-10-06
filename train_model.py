@@ -5,62 +5,19 @@ import chess as c
 import numpy as np
 import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 # importing own files
 import chess_annotation
-import chess_csv
 import datasets
 import data_transformations as dt
-
+import models
 
 OUTPUTS_WHITE: dict[str, int] = dt.targets_to_numericals(c.WHITE)
 OUTPUTS_BLACK: dict[str, int] = dt.targets_to_numericals(c.BLACK)
 
 
-# https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
-# Neural Network class
-class NeuralNetwork(nn.Module):
-    def __init__(self, outputs):
-        """
-        The constructor of the neural network determines the topology of the network.
-        The parameters in channels are always fixed based off the number of output channels derived
-        from the layer before.
-
-        The following script calculates the number of input channels for fc1.
-
-        # calculate the input channel for fully connected layer 1
-        x, y = dataset.__getitem__(0)
-        conv1 = nn.Conv2d(12, 24, 5)
-        pool = nn.MaxPool2d(2, 2)
-        conv2 = nn.Conv2d(24, 32, 2)
-        x = conv1(x)
-        x = pool(x)
-        x = conv2(x)
-        print(x.shape)
-        # based of the dimension of 32x1x1 one can deduce that only 1 pooling layer is needed
-        """
-        super().__init__()
-        # 12 input channels for 12 different piece types
-        self.conv1 = nn.Conv2d(12, 24, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(24, 32, 2)
-        self.fc1 = nn.Linear(32, 120)  # this seems kinds sketchy...
-        self.fc2 = nn.Linear(120, 420)
-        self.fc3 = nn.Linear(420, outputs)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = F.relu(self.conv2(x))
-        x = torch.flatten(x, 1)  # flatten all dimensions except batch
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-
-def initialize_model():
+def init_new_model():
     """
     Creating a new model state by initializing an untrained model and
     saving it to a desired path.
@@ -83,7 +40,7 @@ def initialize_model():
     # getting the outputs matching the color for the topology
     outputs = datasets.get_output_length(color)
     # setting the fitting topology of an untrained network
-    model = NeuralNetwork(outputs)
+    model = models.RetroLaserAI(outputs)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
     # entering new path to save the model to
@@ -183,38 +140,30 @@ def train_chess_model() -> None:
 
     # loading the last checkpoints
     state, path = load_model()
-    # initializing the dataset
-    dataset = datasets.init_chess_dataset(state['color'])
-
-    # Initializing Dataloaders
-    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
-    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
-    # Reference for handling changing dimensions
-    # https://discuss.pytorch.org/t/how-to-load-a-dpretrained-model-with-a-different-output-dimension/26117/7
-
-    # casting the number of old outputs
-    old_outputs = state['output_size']
 
     # getting the device which should be used for training
     device = get_training_device()
 
-    # Initializing NeuralNetwork
-    model = NeuralNetwork(old_outputs).to(device)
+    # casting the number of old outputs and the models color
+    old_outputs = state['output_size']
+    color = state['color']
 
+    # Initializing NeuralNetwork
+    model = models.RetroLaserAI(old_outputs).to(device)
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
     # checking if the output size has changed in between learning
-    if old_outputs != datasets.get_output_length(dataset.__color__()):
+    if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
         num_ftrs = model.fc3.in_features
         model.fc3 = nn.Linear(num_ftrs, old_outputs)
         # loading the pre-trained model with the old outputs
         model.load_state_dict(state['model_state_dict'], strict=False)
         # changing the model to new output size
-        model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(dataset.__color__()))
+        model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(color))
     else:
         # loading optimizer and model state only when the output size has not changed
         optimizer.load_state_dict(state['optimizer_state_dict'])
@@ -224,8 +173,17 @@ def train_chess_model() -> None:
     model.train()
     last_epoch = state['epoch']
 
+    # initializing the dataset
+    dataset = datasets.init_chess_dataset(color)
+
+    # Initializing Dataloaders
+    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
+    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
+
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
+    # Number of trainable parameters
+    # print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     # Train the network for the set epoch size
     for epoch in range(epochs):
@@ -234,10 +192,10 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 5 == 0:
             # saving the model after 5 epochs
-            save_trained_model(dataset.__color__(), model, last_epoch + 20, optimizer, path)
+            save_trained_model(color, model, last_epoch + 20, optimizer, path)
 
     # saving the model after it finished training
-    save_trained_model(dataset.__color__(), model, last_epoch + epochs, optimizer, path)
+    save_trained_model(color, model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
     test(test_dataloader, model, device)
@@ -255,9 +213,9 @@ def generate_move(color, fen, amount_outputs=1):
     """
 
     # loading the model
-    state, path = load_model()
+    state, path = load_model('uci_black_model.pth')
 
-    model = NeuralNetwork(state['output_size'])
+    model = models.RetroLaserAI(state['output_size'])
     model.load_state_dict(state['model_state_dict'])
     model.eval()
 
