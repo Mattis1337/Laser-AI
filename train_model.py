@@ -40,7 +40,7 @@ def init_new_model():
     # getting the outputs matching the color for the topology
     outputs = datasets.get_output_length(color)
     # setting the fitting topology of an untrained network
-    model = models.RetroLaserAI(outputs)
+    model = models.init_neural_network(outputs)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
     # entering new path to save the model to
@@ -149,7 +149,7 @@ def train_chess_model() -> None:
     color = state['color']
 
     # Initializing NeuralNetwork
-    model = models.RetroLaserAI(old_outputs).to(device)
+    model = models.init_neural_network(old_outputs).to(device)
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
@@ -158,12 +158,22 @@ def train_chess_model() -> None:
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
-        num_ftrs = model.fc3.in_features
-        model.fc3 = nn.Linear(num_ftrs, old_outputs)
-        # loading the pre-trained model with the old outputs
-        model.load_state_dict(state['model_state_dict'], strict=False)
-        # changing the model to new output size
-        model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(color))
+        if isinstance(model, models.NeuralNetwork):
+            num_ftrs = model.out_fc.in_features
+            output_layer = model.out_fc
+            model.out_fc = nn.Linear(num_ftrs, old_outputs)
+            # loading the pre-trained model with the old outputs
+            model.load_state_dict(state['model_state_dict'], strict=False)
+            # changing the model to new output size
+            model.out_fc = nn.Linear(num_ftrs, datasets.get_output_length(color))
+        else:
+            num_ftrs = model.fc3.in_features
+            output_layer = model.fc3
+            model.fc3 = nn.Linear(num_ftrs, old_outputs)
+            # loading the pre-trained model with the old outputs
+            model.load_state_dict(state['model_state_dict'], strict=False)
+            # changing the model to new output size
+            model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(color))
     else:
         # loading optimizer and model state only when the output size has not changed
         optimizer.load_state_dict(state['optimizer_state_dict'])
@@ -215,7 +225,7 @@ def generate_move(color, fen, amount_outputs=1):
     # loading the model
     state, path = load_model('uci_black_model.pth')
 
-    model = models.RetroLaserAI(state['output_size'])
+    model = models.init_neural_network(state['output_size'])
     model.load_state_dict(state['model_state_dict'])
     model.eval()
 
