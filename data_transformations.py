@@ -6,7 +6,6 @@ import pandas as pd
 # own files
 from chess_csv import black_moves_csv, white_moves_csv, local_csv_path
 from chess_annotation import bitboard_to_byteboard
-import datasets
 
 
 #  https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html
@@ -115,14 +114,21 @@ def tensor_to_targets(tensor: torch.Tensor, targets: dict, amount_targets=1):
     return annotations
 
 
-def get_highest_index(iterable, amount_targets: int):
+def get_highest_index(iterable, amount_targets: int) -> list[int]:
     """
     Returns the index of the highest value of a given iterable.
-    :param iterable: object which should be used for iterating (e.g. tensor, array, list)
+    :param iterable: object which should be inspected (e.g. tensor, array, list)
     :param amount_targets: how long the list of highest indices should be
     """
-
-    return np.argpartition(iterable.numpy(), -amount_targets)[-amount_targets:]
+    sorted_idx = []
+    for i, val in enumerate(iterable):
+        if i == 0:
+            sorted_idx.append(i)
+        if iterable[sorted_idx[0]] <= val:
+            sorted_idx.insert(0, i)
+        if len(sorted_idx) > amount_targets:
+            sorted_idx.pop(-1)
+    return sorted_idx
 
 
 def create_targets_by_index(index, size):
