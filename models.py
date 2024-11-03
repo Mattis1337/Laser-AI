@@ -65,17 +65,51 @@ class NeuralNetwork(nn.Module):
         return x
 
 
-def init_neural_network(outputs: int):
+def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
     """
     Initialising a Neural Network using a specified topology / Sequential.
     :param outputs: number of outputs for the last layer
+    :param topology: if provided the specified topology will be initialised
     """
-    conv_seq = PADDED_CONV_TOPOLOGY[0]
-    fc_seq = PADDED_CONV_TOPOLOGY[1]
+    if topology is not None:
+        return NeuralNetwork(topology[0], topology[1], outputs)
 
-    model = NeuralNetwork(conv_seq, fc_seq, outputs)
+    topology = get_current_topology()
 
-    return model
+    return NeuralNetwork(topology[0], topology[1], outputs)
+
+
+def get_current_topology():
+    """
+    Choosing one of the available network topologies using user input.
+    """
+
+    # Topologies need to be added manually, since hardcoding them
+    # first of all is better to track all topologies that have been tested,
+    # second of all makes it easier to have all systems on the same level
+    # without having to use some weird method like pickling
+    # and third of all is more secure since when just typing
+    # a topology into a cli you are more prone to not notice mistakes
+    available_topologies = {
+        "Standard topology": STANDARD_TOPOLOGY,
+        "Padded convolutional layer": PADDED_CONV_TOPOLOGY,
+        "Upscaled fully connected layer": UPSCALED_FC_LAYERS,
+        "Padded convolutional layer (without pooling)": PADDED_NOPOOL_TOPOLOGY,
+    }
+    invalid = True
+    while invalid is True:
+        print("Please choose one of the following topologies for training:")
+        for i, topo in enumerate(available_topologies.keys()):
+            print(i, f" {topo}")
+            print(available_topologies[topo])
+        index = input("Please insert the number of your option: ", )
+
+        try:
+            # getting the key by taking the wanted index of a list of all keys
+            topology_key = [key for key in available_topologies.keys()][int(index)]
+            return available_topologies[topology_key]
+        except ValueError:
+            print(f"Your option '{index}' is invalid!")
 
 
 def get_output_shape(model, image_dim):
@@ -89,7 +123,7 @@ def get_output_shape(model, image_dim):
     return np.shape(x)
 
 
-STANDARD_TOPOLOGY: list[nn.Sequential()] = [
+STANDARD_TOPOLOGY: list[nn.Sequential] = [
     nn.Sequential(
         nn.Conv2d(12, 24, 5),
         nn.ReLU(),
@@ -107,7 +141,7 @@ STANDARD_TOPOLOGY: list[nn.Sequential()] = [
 
 # By adding zero_padding of 1 to the first conv layer the amount of kernel images
 # fitting onto 1 layer gets larger giving us more weights to train
-PADDED_CONV_TOPOLOGY: list[nn.Sequential()] = [
+PADDED_CONV_TOPOLOGY: list[nn.Sequential] = [
     nn.Sequential(
         nn.Conv2d(12, 24, 5, padding=1),
         nn.ReLU(),
@@ -123,15 +157,36 @@ PADDED_CONV_TOPOLOGY: list[nn.Sequential()] = [
     )
 ]
 
+# Scaling up the fully connected layer will resolve overfitting and make the final output
+# of the network more accurate
+UPSCALED_FC_LAYERS: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, 5, padding=1),
+        nn.ReLU(),
+        nn.MaxPool2d(2, 2),
+        nn.Conv2d(32, 64, 3),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.Linear(64, 256),
+        nn.ReLU(),
+        nn.Linear(256, 512),
+        nn.ReLU(),
+        nn.Linear(512, 1024),
+        nn.ReLU(),
+    )
+]
+
 # Removing the Pooling layer might lead to better results as pooling layers
 # are generally being used to blurr out noise however on a chess board almost every feature
 # plays a vital role to the move that should be generated
-PADDED_NOPOOL_TOPOLOGY: list[nn.Sequential()] = [
+PADDED_NOPOOL_TOPOLOGY: list[nn.Sequential] = [
     nn.Sequential(
-        nn.Conv2d(12, 24, 6),
+        nn.Conv2d(12, 32, 6, padding=1),
         nn.ReLU(),
-        nn.Conv2d(24, 48, 3),
+        nn.Conv2d(32, 64, 3),
         nn.ReLU(),
     ),
-    PADDED_CONV_TOPOLOGY[1]
+    UPSCALED_FC_LAYERS[1]
 ]
+
