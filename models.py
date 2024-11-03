@@ -184,9 +184,16 @@ PADDED_NOPOOL_TOPOLOGY: list[nn.Sequential] = [
     nn.Sequential(
         nn.Conv2d(12, 32, 6, padding=1),
         nn.ReLU(),
-        nn.Conv2d(32, 64, 3),
+        nn.Conv2d(32, 64, 5),
         nn.ReLU(),
     ),
-    UPSCALED_FC_LAYERS[1]
+    nn.Sequential(
+        nn.Linear(64, 256),
+        nn.ReLU(),
+        nn.Linear(256, 512),
+        nn.ReLU(),
+        nn.Linear(512, 1024),
+        nn.ReLU(),
+    )
 ]
 
