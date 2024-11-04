@@ -306,13 +306,17 @@ def save_trained_model(color, model, epoch, optimizer, path):
     :param optimizer:  the  adjusted optimizer which was used
     :param path: path to save the state to
     """
+    models_path: str = "models"
+    if not os.path.exists(models_path):
+        os.mkdir(models_path)
+
     torch.save({
                 'color': color,
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'output_size': datasets.get_output_length(color)},
-               'models/'+path)
+               f'{models_path}/{path}')
     print(f"Saved PyTorch Current Model State to {path}")
 
 
