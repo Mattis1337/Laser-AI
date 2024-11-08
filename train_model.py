@@ -202,7 +202,7 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
-            save_trained_model(color, model, last_epoch + 1, optimizer, path)
+            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)
 
     # saving the model after it finished training
     # save_trained_model(color, model, last_epoch + epochs, optimizer, path)
