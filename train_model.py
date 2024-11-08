@@ -106,10 +106,10 @@ def test(dataloader, model, device):
             # calculate outputs by running game states through the network
             pred = model(image.to(device))
             # getting the highest match of the AI output
-            pred = dt.get_highest_index(pred, 1)
+            pred = dt.get_highest_index(pred[0], 1)
 
             # comparing if the AI's match is the same as the output
-            if int(label[0]) == int(pred[0][0]):
+            if int(label[0]) == int(pred[0]):
                 total += 1
 
             if (i+1) % 10000 == 0:
@@ -193,19 +193,19 @@ def train_chess_model() -> None:
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
     # Number of trainable parameters
-    # print(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     # Train the network for the set epoch size
     for epoch in range(epochs):
-        print(f"Epoch {epoch+1}\n-------------------------------")
+        print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer, device)
 
-        if (epoch+1) % 5 == 0:
-            # saving the model after 5 epochs
-            save_trained_model(color, model, last_epoch + 20, optimizer, path)
+        if (epoch+1) % 1 == 0:
+            # saving the model after every epoch
+            save_trained_model(color, model, last_epoch + 1, optimizer, path)
 
     # saving the model after it finished training
-    save_trained_model(color, model, last_epoch + epochs, optimizer, path)
+    # save_trained_model(color, model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
     test(test_dataloader, model, device)
@@ -223,10 +223,11 @@ def generate_move(color, fen, amount_outputs=1):
     """
 
     # loading the model
-    state, path = load_model('uci_black_model.pth')
+    state, path = load_model('upscaled_fc_black.pth')
 
     model = models.init_neural_network(state['output_size'])
-    model.load_state_dict(state['model_state_dict'])
+    # TODO: look at why strict mapping is crashing the script
+    model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
 
     # turning the fen into bitboards
@@ -289,7 +290,7 @@ def load_model(path=None):
                 print(f'Option {option} is out of bounds!')
     else:
         # TODO: Add mechanism for server to choose AI model
-        path = 'uci_black_model.pth'
+        path = path
 
     state = torch.load('models/'+path)
 
