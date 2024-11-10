@@ -6,7 +6,6 @@ import pandas as pd
 # own files
 from chess_csv import black_moves_csv, white_moves_csv, local_csv_path
 from chess_annotation import bitboard_to_byteboard
-import datasets
 
 
 #  https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html
@@ -65,10 +64,12 @@ def transform_bitboards(bitboards):
     return byteboard
 
 
-# TODO: new function which decodes the targets
-def targets_to_tensor(color) -> dict:
-    # setting the input dimensions
-    output_dimension = [datasets.get_output_length(color)]
+def targets_to_numericals(color) -> dict:
+    """
+    Decodes every move in a file by taking its index and returning it with a dict.
+    :param color: which set of moves should be decoded
+    """
+
     targets = []
     if type(color) is not bool:
         raise ValueError(f"Expected type {chess.COLORS} but received type {type(color)}")
@@ -83,81 +84,51 @@ def targets_to_tensor(color) -> dict:
 
     for i, target in enumerate(targets):
         target = target[0]
-        tensor = create_targets_by_index(i, output_dimension)
         # adding the target tensor with the key of the fitting move
-        target_tensor_dict[target] = tensor
+        target_tensor_dict[target] = i
 
     return target_tensor_dict
 
 
-def tensor_to_targets(tensor: torch.Tensor, color: chess.COLORS, targets: dict, annotation=False, amount_targets=1):
+def tensor_to_targets(tensor: torch.Tensor, targets: dict, amount_targets=1):
     """
     Return the fitting tensor (for further calculations) or the fitting notation (for generating moves)
     to a given tensor based off a given dictionary.
     :param tensor: input tensor with non integer values
-    :param color: color of neural network to get the size of the outputs
-    :param targets: a dictionary created by targets_to_tensor containing fitting notation to a possible target tensor
-    :param annotation: whether the output should be the notation or the tensor (by default the tensor)
+    :param targets: a dictionary created by targets_to_numericals containing fitting notation to a possible target tensor
     :param amount_targets: how big the amount of highest ranking annotations should be
     """
 
-    match = []
-    output_dimension = [datasets.get_output_length(color)]
-
     # getting the highest index / indices of a given output tensor
-    for i in range(amount_targets):
-        if i == 0:
-            match.append(get_highest_index(tensor[0]))
-        else:
-            match.append(get_highest_index(tensor[0], match))
-
-    tensors = []
-    # creating the tensors based on which index should be the right output
-    for i in range(amount_targets):
-        tensors.append(create_targets_by_index(match[i], output_dimension))
-
-    # checks if tensors should be turned into fitting annotation
-    if annotation is False:
-        return torch.Tensor(tensors[0]).float()  # returning only index 0
+    match = get_highest_index(tensor[0], amount_targets)[-amount_targets:]
+    # reversing the list so the highest index is now at [0]
+    match = match[::-1]
 
     annotations = []
     # returns all fitting annotations to the tensors
     for i in range(amount_targets):
         for key, value in targets.items():
-            if compare_tensors(value, tensors[i]):
+            if value == match[i]:
                 annotations.append(key)
 
     return annotations
 
 
-def get_highest_index(iterable, skips=None):
+def get_highest_index(iterable, amount_targets: int) -> list[int]:
     """
     Returns the index of the highest value of a given iterable.
-    :param iterable: object which should be used for iterating (e.g. tensor, array, list)
-    :param skips: indices which have already been evaluated and should be skipped
+    :param iterable: object which should be inspected (e.g. tensor, array, list)
+    :param amount_targets: how long the list of highest indices should be
     """
-    highest = 0.0
-    match = None
-
-    if skips is None:
-        # setting highest to the highest number found in the iterable
-        highest = max(iterable)
-        for i in range(iterable.__len__()):
-            # looking for highest number will mitigate time consumption
-            if iterable[i] == highest:
-                return i
-
-        return match
-
-    if skips:
-        for i in range(iterable.__len__()):
-            if any(index == i for index in skips): continue
-
-            if iterable[i] >= highest:
-                highest = iterable[i]
-                match = i
-
-        return match
+    sorted_idx = []
+    for i, val in enumerate(iterable):
+        if i == 0:
+            sorted_idx.append(i)
+        if iterable[sorted_idx[0]] <= val:
+            sorted_idx.insert(0, i)
+        if len(sorted_idx) > amount_targets:
+            sorted_idx.pop(-1)
+    return sorted_idx
 
 
 def create_targets_by_index(index, size):
