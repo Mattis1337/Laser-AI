@@ -221,11 +221,10 @@ def generate_move(color, fen, amount_outputs=1):
     :param fen: current game state
     :param amount_outputs: the top amount of targets to be returned
     """
-
+    # TODO: add mechanism for server to flexibly choose model
     # loading the model
-    state, path = load_model('upscaled_fc_black.pth')
-
-    model = models.init_neural_network(state['output_size'])
+    state, path = load_model('upscaled_nopool_black.pth')
+    model = models.init_neural_network(state['output_size'], models.PADDED_NOPOOL_TOPOLOGY)
     # TODO: look at why strict mapping is crashing the script
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
@@ -289,7 +288,6 @@ def load_model(path=None):
             else:
                 print(f'Option {option} is out of bounds!')
     else:
-        # TODO: Add mechanism for server to choose AI model
         path = path
 
     state = torch.load('models/'+path)

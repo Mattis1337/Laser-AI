@@ -122,10 +122,12 @@ def get_highest_index(iterable, amount_targets: int) -> list[int]:
     """
     sorted_idx = []
     for i, val in enumerate(iterable):
-        if i == 0:
+        if len(sorted_idx) < amount_targets:
             sorted_idx.append(i)
-        if iterable[sorted_idx[0]] <= val:
-            sorted_idx.insert(0, i)
+        for j in range(len(sorted_idx)):
+            if iterable[sorted_idx[j]] <= val:
+                sorted_idx.insert(j, i)
+                break
         if len(sorted_idx) > amount_targets:
             sorted_idx.pop(-1)
     return sorted_idx
