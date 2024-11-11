@@ -64,6 +64,7 @@ def request_ai_move(board: chess.Board, url: str, retries: int = 5, delay: int =
             time.sleep(delay)
             continue
 
+        print("Move generated: " + move_san)
         return move
 
     return None

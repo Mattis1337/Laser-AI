@@ -1,5 +1,7 @@
-Logs
-Games
+Logs/*
+Games/*
+CSV/*
+models/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

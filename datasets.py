@@ -16,7 +16,7 @@ class ChessDataset(Dataset):
         self.data, self.labels = prepare_chess_data(img_dir)
         self.color = color
         self.transform = transform
-        self.targets_transformed = dt.targets_to_tensor(color)
+        self.targets_transformed = dt.targets_to_numericals(color)
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -83,7 +83,7 @@ def init_chess_dataset(color: c.COLORS) -> ChessDataset:
 
 def get_output_length(color: c.COLORS) -> int:
     """Getting the total number of learnable moves"""
-    base_path = "/home/mattis/development/"
+    base_path = local_csv_path
     df = None
 
     if type(color) is not bool:

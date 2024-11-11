@@ -7,7 +7,7 @@ import chess_annotation as annotation
 # the directory containing chess game representations in PGN format
 pgn_dir = r"Games"
 # your local directory containing the CSV/ folder
-local_csv_path = r"/path/to/games/"
+local_csv_path = r"./"
 # the paths to save the training data to
 white_games_csv = r"CSV/white_games.csv"
 black_games_csv = r"CSV/black_games.csv"
@@ -112,7 +112,7 @@ def create_one_output(game_csv: str, save_path: str):
     """
     games = pd.read_csv(local_csv_path + game_csv)
     moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
-    moves.to_csv(local_csv_path + save_path, header=False, index=False)
+    moves.to_csv(local_csv_path + save_path, header=True, index=False)
 
 
 def create_outputs(white_csv: str, black_csv: str, white_moves_path: str, black_moves_path: str):
