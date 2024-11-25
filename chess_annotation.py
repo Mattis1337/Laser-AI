@@ -96,7 +96,7 @@ def pgn_to_bitboards_final(pgn: TextIO) -> list[int]:
     return get_bitboards(board)
 
 
-def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
+def pgn_to_bitboards_snapshots(pgn: TextIO) -> tuple[list[list[int]], list[str], chess.Color]:
     """
     Converts a PGN file to two arrays. The first one contains bitboards grouped by piece type in a subarray.
     The next move is stored in second one as well. This is done by snapshotting the board after each move.
@@ -140,8 +140,17 @@ def pgn_to_bitboards_snapshots(pgn: TextIO) -> (list[list[int]], list[str]):
 
         states.append(bitboards)
         moves.append(uci)
+        
+    result = game.headers['Result']
+    winner: chess.Color
+    if result == '1-0':
+        winner = chess.WHITE
+    elif result == '0-1':
+        winner = chess.BLACK
+    else:
+        winner = None
 
-    return states, moves
+    return states, moves, winner
 
 
 def print_bitboard(bitboard: int):

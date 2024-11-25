@@ -10,6 +10,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 # parsing data
 import pandas as pd
+import chess
 
 import chess_annotation as annotation
 
@@ -77,7 +78,7 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
 
     # loads PGN file
     with open(pgn_path, "r") as pgn:
-        board_states, moves = annotation.pgn_to_bitboards_snapshots(pgn)
+        board_states, moves, winner = annotation.pgn_to_bitboards_snapshots(pgn)
 
         # iterates over board_states which are represented by 12 bitboards in a list
         for i, state in enumerate(board_states):
@@ -103,12 +104,19 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
                 'bitboards_bK': state[11],
                 'move': moves[i],
             }
-
-            # white always plays even move number: 0 (first play), 2, 4, [...]
-            if i % 2 == 0:
-                white_data.append(data)
+            
+            if winner == chess.WHITE:
+                if i % 2 == 0:
+                    white_data.append(data)
+            elif winner == chess.BLACK:
+                if i % 2 != 0:
+                    black_data.append(data)
             else:
-                black_data.append(data)
+                # white always plays even move number: 0 (first play), 2, 4, [...]
+                if i % 2 == 0:
+                    white_data.append(data)
+                else:
+                    black_data.append(data)
 
     return white_data, black_data
 
