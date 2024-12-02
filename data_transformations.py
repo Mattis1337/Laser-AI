@@ -101,8 +101,6 @@ def tensor_to_targets(tensor: torch.Tensor, targets: dict, amount_targets=1):
 
     # getting the highest index / indices of a given output tensor
     match = get_highest_index(tensor[0], amount_targets)[-amount_targets:]
-    # reversing the list so the highest index is now at [0]
-    match = match[::-1]
 
     annotations = []
     # returns all fitting annotations to the tensors
