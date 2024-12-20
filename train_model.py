@@ -51,9 +51,9 @@ def init_new_model():
 
 
 # Single iteration training
-def train(dataloader, model, criterion, optimizer, device):
+def train_cnn(dataloader, model, criterion, optimizer, device):
     """
-    Training a chess model depending on the color
+    Training a feed forward chess model
     :param dataloader: the dataloader containing the white/black moves which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
     :param criterion: loss function
@@ -71,7 +71,7 @@ def train(dataloader, model, criterion, optimizer, device):
         optimizer.zero_grad(set_to_none=True)
 
         # forward + backward + optimize
-        pred = model(inputs.to(device))
+        pred, _ = model(inputs.to(device))
         loss = criterion(pred, labels.to(device))
         loss.backward()
         optimizer.step()
@@ -86,13 +86,45 @@ def train(dataloader, model, criterion, optimizer, device):
     print("Epoch done!")
 
 
+def train_rnn(dataloader, model, criterion, learning_rate, device):
+    """
+    Training a recurrent neural network
+    :param dataloader: the dataloader containing the white/black moves which shall be used for testing
+    :param model: a model object instantiated from NeuralNetwork
+    :param criterion: loss function
+    :param learning_rate: the factor at which the loss is gonna affect the weights
+    :param device: the device currently used for training
+    """
+
+    for batch, data in enumerate(dataloader, 0):
+        input_sequence, target_sequence = data
+        # TODO: when fitting dataset is available the data dimensions will change
+        target_sequence.unsqueeze_(-1)
+        hidden = model.initHidden()
+
+        model.zero_grad()
+
+        loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
+
+        # iterating through all previous moves
+        for i in range(input_sequence.size(0)):
+            output, hidden = model(input_sequence[i], hidden)
+            l = criterion(output, target_sequence[i])
+            loss += l
+
+        loss.backward()
+
+        for p in model.parameters():
+            p.data.add_(p.grad.data, alpha=-learning_rate)
+
+
 def test(dataloader, model, device):
     """
     Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
     digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
-    :param device: the device currently used for training
+    :param device: the device currently used for testing
     """
 
     model.eval()
@@ -153,7 +185,8 @@ def train_chess_model() -> None:
     # Setting the module parameters
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+    learning_rate = 1e-4
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
@@ -198,7 +231,10 @@ def train_chess_model() -> None:
     # Train the network for the set epoch size
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
-        train(train_dataloader, model, criterion, optimizer, device)
+        if model.recurrent is True:
+            train_rnn(train_dataloader, model, criterion, learning_rate, device)
+        else:
+            train_cnn(train_dataloader, model, criterion, optimizer, device)
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
@@ -221,11 +257,10 @@ def generate_move(color, fen, amount_outputs=1):
     :param fen: current game state
     :param amount_outputs: the top amount of targets to be returned
     """
-    # TODO: add mechanism for server to flexibly choose model
+    # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
-    state, path = load_model('upscaled_nopool_black.pth')
-    model = models.init_neural_network(state['output_size'], models.PADDED_NOPOOL_TOPOLOGY)
-    # TODO: look at why strict mapping is crashing the script
+    state, path = load_model('nopool_nopad_black.pth')
+    model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
 

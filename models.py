@@ -51,18 +51,33 @@ class RetroLaserAI(nn.Module):
 
 
 class NeuralNetwork(nn.Module):
-    def __init__(self, conv_seq, fc_seq, outputs):
+    def __init__(self, conv_seq, fc_seq, outputs, recurrent=False):
         super().__init__()
         self.conv_seq = conv_seq
         self.fc_seq = fc_seq
+        self.recurrent = recurrent
         self.out_fc = nn.Linear(get_output_shape(fc_seq, get_output_shape(conv_seq, [12, 8, 8])[0])[0], outputs)
 
-    def forward(self, x):
+    def forward(self, x, hidden=None):
         x = self.conv_seq(x)
         x = torch.flatten(x, 1)
-        x = self.fc_seq(x)
+        if self.recurrent:
+            x = torch.unsqueeze(x, 0)
+        for module in self.fc_seq:
+            if isinstance(module, nn.RNN):
+                x = x.squeeze(-1)
+                # changing dimension from [x] to [x + hidden]
+                x = torch.cat((x, hidden), 1)
+                x, _ = module(x)
+            else:
+                x = module(x)
+
         x = self.out_fc(x)
-        return x
+        return x, hidden
+
+    # TODO: (1) more clean way of handling the hidden layer is needed
+    def initHidden(self):
+        return torch.zeros(1, get_output_shape(self.conv_seq, [12, 8, 8])[0])
 
 
 def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
@@ -75,6 +90,9 @@ def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
         return NeuralNetwork(topology[0], topology[1], outputs)
 
     topology = get_current_topology()
+
+    if isinstance(topology[-1], bool):
+        return NeuralNetwork(topology[0], topology[1], outputs, topology[-1])
 
     return NeuralNetwork(topology[0], topology[1], outputs)
 
@@ -95,6 +113,9 @@ def get_current_topology():
         "Padded convolutional layer": PADDED_CONV_TOPOLOGY,
         "Upscaled fully connected layer": UPSCALED_FC_LAYERS,
         "Padded convolutional layer (without pooling)": PADDED_NOPOOL_TOPOLOGY,
+        "Unpadded convolutional layer (without pooling)": NOPOOL_BIGFC_LAYER,
+        "Pooling Dropout Softmax": POOLING_DROPOUT,
+        "Recurrent convolutional network": RECURRENT_CONV,
     }
     invalid = True
     while invalid is True:
@@ -119,7 +140,20 @@ def get_output_shape(model, image_dim):
     :param model: the model topology
     :param image_dim: the dimensions of the dummy data
     """
-    x = model(torch.rand(image_dim))
+    x = torch.rand(image_dim)
+
+    # TODO: this has to be reconfigured (see todo1)
+    for module in model:
+        if isinstance(module, nn.RNN):
+            x = torch.cat((x, x), 0)
+            x = torch.unsqueeze(x, 0)
+            x, _ = module(x)
+        else:
+            x = module(x)
+
+    if isinstance(model[0], nn.RNN):
+        return [np.shape(x)[1]]
+
     return np.shape(x)
 
 
@@ -197,3 +231,58 @@ PADDED_NOPOOL_TOPOLOGY: list[nn.Sequential] = [
     )
 ]
 
+
+NOPOOL_BIGFC_LAYER: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, 5),
+        nn.ReLU(),
+        nn.Conv2d(32, 64, 4),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.Linear(64, 192),
+        nn.ReLU(),
+        nn.Linear(192, 576),
+        nn.ReLU(),
+        nn.Linear(576, 1728),
+        nn.ReLU(),
+    )
+]
+
+# testing rnns to bring more depth to the decision making of the AI
+
+RECURRENT_CONV: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, 5),
+        nn.ReLU(),
+        nn.Conv2d(32, 64, 4),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.RNN(64+64, 192, batch_first=True),
+        nn.ReLU(),
+        nn.Linear(192, 576),
+        nn.ReLU(),
+        nn.Linear(576, 1728),
+        nn.ReLU(),
+    ),
+    True,
+]
+
+POOLING_DROPOUT: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, kernel_size=3),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(32, 64, kernel_size=3),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.Linear(64, 256),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+        nn.Linear(256, 512),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+    )
+]
