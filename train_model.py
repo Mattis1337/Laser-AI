@@ -86,16 +86,16 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
     print("Epoch done!")
 
 
-def train_rnn(dataloader, model, criterion, learning_rate, device):
+def train_rnn(dataloader, model, criterion, optimizer, device):
     """
     Training a recurrent neural network
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
     :param criterion: loss function
-    :param learning_rate: the factor at which the loss is gonna affect the weights
+    :param optimizer: the optimizer used for enhancing the training algorithm
     :param device: the device currently used for training
     """
-
+    running_loss = 0
     for batch, data in enumerate(dataloader, 0):
         input_sequence, target_sequence = data
         # TODO: when fitting dataset is available the data dimensions will change
@@ -103,24 +103,32 @@ def train_rnn(dataloader, model, criterion, learning_rate, device):
         hidden = model.initHidden()
 
         model.zero_grad()
+        optimizer.zero_grad(set_to_none=True)
 
         loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
 
         # iterating through all previous moves
         for i in range(input_sequence.size(0)):
-            output, hidden = model(input_sequence[i], hidden)
-            l = criterion(output, target_sequence[i])
+            output, hidden = model(input_sequence[i].to(device), hidden.to(device))
+            l = criterion(output, target_sequence[i].to(device))
             loss += l
 
         loss.backward()
+        optimizer.step()
+        running_loss += loss
 
-        for p in model.parameters():
-            p.data.add_(p.grad.data, alpha=-learning_rate)
+        if (batch+1) % 100 == 0:
+            current = (batch + 1) * len(input_sequence)
+            print(f"loss: {running_loss / (dataloader.batch_size * 100)}  [{current:>5d}/{len(dataloader.dataset):>5d}]")
+            running_loss = 0
+
+            # TODO: as iterating through the whole dataset takes too long
+            if (batch + 1) % 1000 == 0: return
 
 
 def test(dataloader, model, device):
     """
-    Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
+    Testing the accuracy of a given mode        if (batch+1) % 100 == 0:l by calculating the total error in a given output by averaging the error per
     digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
@@ -220,8 +228,8 @@ def train_chess_model() -> None:
     dataset = datasets.init_chess_dataset(color)
 
     # Initializing Dataloaders
-    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
-    test_dataloader = DataLoader(dataset, shuffle=True, num_workers=8)
+    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=16)
+    test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
@@ -232,7 +240,7 @@ def train_chess_model() -> None:
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
         if model.recurrent is True:
-            train_rnn(train_dataloader, model, criterion, learning_rate, device)
+            train_rnn(train_dataloader, model, criterion, optimizer, device)
         else:
             train_cnn(train_dataloader, model, criterion, optimizer, device)
 
@@ -244,7 +252,7 @@ def train_chess_model() -> None:
     # save_trained_model(color, model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
-    test(test_dataloader, model, device)
+    # test(test_dataloader, model, device)
 
     print("Done!")
 
