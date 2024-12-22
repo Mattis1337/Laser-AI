@@ -126,9 +126,9 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
             if (batch + 1) % 1000 == 0: return
 
 
-def test(dataloader, model, device):
+def test_cnn(dataloader, model, device):
     """
-    Testing the accuracy of a given mode        if (batch+1) % 100 == 0:l by calculating the total error in a given output by averaging the error per
+    Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
     digit in an output and adding it.
     :param dataloader: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
@@ -144,13 +144,51 @@ def test(dataloader, model, device):
             image, label = data
 
             # calculate outputs by running game states through the network
-            pred = model(image.to(device))
+            pred, _ = model(image.to(device))
             # getting the highest match of the AI output
             pred = dt.get_highest_index(pred[0], 1)
 
             # comparing if the AI's match is the same as the output
             if int(label[0]) == int(pred[0]):
                 total += 1
+
+            if (i+1) % 10000 == 0:
+                print(f'Successfully tested {i+1} randomly shuffled game states!')
+                break
+
+    print(f'Accuracy of the network: {total/100}%')
+    model.train()
+
+
+def test_rnn(dataloader, model, device):
+    """
+    Testing the accuracy of a given recurrent model by calculating the total error in a given output by averaging the error per
+    digit in an output and adding it.
+    :param dataloader: the dataloader containing the white/black moves which shall be used for testing
+    :param model: a model object instantiated from NeuralNetwork
+    :param device: the device currently used for testing
+    """
+
+    model.eval()
+
+    total = 0
+    # since we're not training, we don't need to calculate the gradients for our outputs
+    with torch.no_grad():
+        for i, data in enumerate(dataloader):
+            input_sequence, label = data
+
+            if model.recurrent is True:
+                hidden = model.initHidden()
+            # calculate outputs by running game states through the network
+            for j in range(input_sequence.size(0)):
+                output, hidden = model(input_sequence[j].to(device), hidden.to(device))
+
+                # getting the highest match of the AI output
+                pred = dt.get_highest_index(output[0], 1)
+
+                # comparing if the AI's match is the same as the output
+                if int(label[0]) == int(pred[0]):
+                    total += 1
 
             if (i+1) % 10000 == 0:
                 print(f'Successfully tested {i+1} randomly shuffled game states!')
@@ -252,7 +290,10 @@ def train_chess_model() -> None:
     # save_trained_model(color, model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
-    # test(test_dataloader, model, device)
+    if model.recurrent is True:
+        test_rnn(test_dataloader, model, device)
+    else:
+        test_cnn(test_dataloader, model, device)
 
     print("Done!")
 
@@ -267,7 +308,7 @@ def generate_move(color, fen, amount_outputs=1):
     """
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
-    state, path = load_model('nopool_nopad_black.pth')
+    state, path = load_model('recurrent_conv_black.pth')
     model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
@@ -293,7 +334,7 @@ def generate_move(color, fen, amount_outputs=1):
             raise ValueError("Expected variable color to be of type bool but received" + type(color))
 
     with torch.no_grad():
-        pred = model(x)
+        pred, _ = model(x)
         pred = dt.tensor_to_targets(pred,
                                     outputs,
                                     amount_outputs)
