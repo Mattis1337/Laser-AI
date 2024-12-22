@@ -4,7 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 # Importing own files
-from chess_csv import white_games_csv, black_games_csv, white_moves_csv, black_moves_csv, local_csv_path
+from chess_csv import WHITE_GAMES_CSV, BLACK_GAMES_CSV, WHITE_MOVES_CSV, BLACK_MOVES_CSV
 import chess_annotation
 from chess_annotation import bitboard_to_byteboard
 import data_transformations as dt
@@ -55,11 +55,10 @@ def prepare_chess_data(path: str):
     :param path: path to the CSV file
     """
     # change the base path based on where the CSV folder is located
-    base_path = local_csv_path
 
-    bitboards = np.array(pd.read_csv(base_path + path, usecols=range(12)))
+    bitboards = np.array(pd.read_csv(path, usecols=range(12)))
 
-    labels = np.array(pd.read_csv(base_path + path, usecols=[12]))  # new method turns label into tensor
+    labels = np.array(pd.read_csv(path, usecols=[12]))  # new method turns label into tensor
 
     return bitboards, labels
 
@@ -69,13 +68,13 @@ def init_chess_dataset(color: c.COLORS) -> ChessDataset:
         raise ValueError(f"Variable color must be of type {c.COLORS} but is of type {type(color)}!")
 
     if color is True:
-        dataset = ChessDataset(white_games_csv,
+        dataset = ChessDataset(WHITE_GAMES_CSV,
                                color,
                                transform=dt.to_tensor)  # dt.RandomCrop(4) additionally
         return dataset
 
     elif color is False:
-        dataset = ChessDataset(black_games_csv,
+        dataset = ChessDataset(BLACK_GAMES_CSV,
                                color,
                                transform=dt.to_tensor)
         return dataset
@@ -83,15 +82,14 @@ def init_chess_dataset(color: c.COLORS) -> ChessDataset:
 
 def get_output_length(color: c.COLORS) -> int:
     """Getting the total number of learnable moves"""
-    base_path = local_csv_path
     df = None
 
     if type(color) is not bool:
         raise ValueError(f"Expected type {c.COLORS} but received type {type(color)}")
 
     if color is True:
-        df = pd.read_csv(base_path + white_moves_csv)
+        df = pd.read_csv(WHITE_MOVES_CSV)
     if color is False:
-        df = pd.read_csv(base_path + black_moves_csv)
+        df = pd.read_csv(BLACK_MOVES_CSV)
 
     return df.__len__()
