@@ -24,9 +24,15 @@ os.makedirs(CSV_DIR, exist_ok=True)
 # the paths to save the training data to
 WHITE_GAMES_CSV: str = os.path.join(CSV_DIR, r"white_games.csv")
 BLACK_GAMES_CSV: str = os.path.join(CSV_DIR, r"black_games.csv")
+
+WHITE_RNN_GAMES_CSV: str = os.path.join(CSV_DIR, r"white_rnn_games.csv")
+BLACK_RNN_GAMES_CSV: str = os.path.join(CSV_DIR, r"black_rnn_games.csv")
 # the paths to save the outputs to
 WHITE_MOVES_CSV: str = os.path.join(CSV_DIR, r"white_moves.csv")
 BLACK_MOVES_CSV: str = os.path.join(CSV_DIR, r"black_moves.csv")
+
+WHITE_RNN_MOVES_CSV: str = os.path.join(CSV_DIR, r"white_rnn_moves.csv")
+BLACK_RNN_MOVES_CSV: str = os.path.join(CSV_DIR, r"black_rnn_moves.csv")
 
 
 def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]:
@@ -65,12 +71,13 @@ def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]
     return itertools.batched(pgn_file_paths, chunk_size)
 
 
-def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
+def convert_single_pgn_to_csv(pgn_path: str, retro=False) -> tuple[list, list]:
     """
     Converts a PGN file's moves into board states mapped to the next move.
     Then it converts them into memory-efficient bitboards.
     Lastly, the data is saved in two csv data sets (IN RAM) representing white and black moves respectively.
     :param pgn_path: The PGN file to load
+    :param retro: use old formatting for csv
     :return: Two lists of CSV data representing white and black board states/moves
     """
     white_data = []
@@ -80,43 +87,62 @@ def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
     with open(pgn_path, "r") as pgn:
         board_states, moves, winner = annotation.pgn_to_bitboards_snapshots(pgn)
 
-        # iterates over board_states which are represented by 12 bitboards in a list
-        for i, state in enumerate(board_states):
-            # prevents crash, if bitboards couldn't be loaded
-            if state is None or moves[i] is None:
-                continue
-            if any(bitboard is None for bitboard in state):
-                continue
+        if retro is True:
+            # iterates over board_states which are represented by 12 bitboards in a list
+            for i, state in enumerate(board_states):
+                # prevents crash, if bitboards couldn't be loaded
+                if state is None or moves[i] is None:
+                    continue
+                if any(bitboard is None for bitboard in state):
+                    continue
 
-            # every bitboard has its own column
-            data = {
-                'bitboards_wP': state[0],
-                'bitboards_wN': state[1],
-                'bitboards_wB': state[2],
-                'bitboards_wR': state[3],
-                'bitboards_wQ': state[4],
-                'bitboards_wK': state[5],
-                'bitboards_bP': state[6],
-                'bitboards_bN': state[7],
-                'bitboards_bB': state[8],
-                'bitboards_bR': state[9],
-                'bitboards_bQ': state[10],
-                'bitboards_bK': state[11],
-                'move': moves[i],
-            }
-            
-            if winner == chess.WHITE:
-                if i % 2 == 0:
-                    white_data.append(data)
-            elif winner == chess.BLACK:
-                if i % 2 != 0:
-                    black_data.append(data)
-            else:
-                # white always plays even move number: 0 (first play), 2, 4, [...]
-                if i % 2 == 0:
-                    white_data.append(data)
+                # every bitboard has its own column
+                data = {
+                    'bitboards_wP': state[0],
+                    'bitboards_wN': state[1],
+                    'bitboards_wB': state[2],
+                    'bitboards_wR': state[3],
+                    'bitboards_wQ': state[4],
+                    'bitboards_wK': state[5],
+                    'bitboards_bP': state[6],
+                    'bitboards_bN': state[7],
+                    'bitboards_bB': state[8],
+                    'bitboards_bR': state[9],
+                    'bitboards_bQ': state[10],
+                    'bitboards_bK': state[11],
+                    'move': moves[i],
+                }
+
+                if winner == chess.WHITE:
+                    if i % 2 == 0:
+                        white_data.append(data)
+                elif winner == chess.BLACK:
+                    if i % 2 != 0:
+                        black_data.append(data)
                 else:
-                    black_data.append(data)
+                    # white always plays even move number: 0 (first play), 2, 4, [...]
+                    if i % 2 == 0:
+                        white_data.append(data)
+                    else:
+                        black_data.append(data)
+        w_data = {
+            'states': board_states[::2],
+            'moves': moves[::2],
+        }
+
+        b_data = {
+            'states': board_states[1::2],
+            'moves': moves[1::2],
+        }
+            
+        if winner == chess.WHITE:
+            white_data.append(w_data)
+        elif winner == chess.BLACK:
+            black_data.append(b_data)
+        else:
+            # if neither player won e.g. in the case of a draw both players' moves will be used
+            white_data.append(w_data)
+            black_data.append(b_data)
 
     return white_data, black_data
 
@@ -135,6 +161,7 @@ def pgns_to_csv(
     pgn_file_paths: tuple[list],
     white_games_path: str,
     black_games_path: str,
+    retro: bool = False,
 ):
     """
     Converts the PGN files in the provided paths to bitboard and move pairs.
@@ -144,9 +171,10 @@ def pgns_to_csv(
         pgn_file_paths (tuple[list]): Paths of PGNs to convert
         white_games_path (str): Path to CSV of black games
         black_games_path (str): Path to CSV for black games
+        retro (bool): Indicator whether to use old formatting or not
     """
     for path in pgn_file_paths:
-        white_data, black_data = convert_single_pgn_to_csv(pgn_path=path)
+        white_data, black_data = convert_single_pgn_to_csv(pgn_path=path, retro=retro)
         # writes the data
         # TODO(Samuil1337): Writing could be done on a separate thread
         write_csv(data=white_data, path=white_games_path)
@@ -239,7 +267,7 @@ async def all_pgns_to_csv(
         )
         print("[CSV] Merged CSV fragments for " + games_path)
 
-    # run IO tasks on sepatate threads
+    # run IO tasks on separate threads
     threads = [
         run_merge(games_path=white_games_path),
         run_merge(games_path=black_games_path),
@@ -257,7 +285,7 @@ def create_output(game_csv: str, save_path: str):
     :param game_csv: A CSV file containing mappings of board states and moves, created by convert_png_to_csv()
     :param save_path: The path where the new CSV file should be saved at
     """
-    games = pd.read_csv(game_csv)
+    games = pd.read_csv(game_csv, on_bad_lines='warn')
     moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
     moves.to_csv(save_path, header=False, index=False)
     print(f"[CSV] Created outputs successfully in {save_path}")
@@ -275,8 +303,8 @@ def main():
     # and saves the values to CSVs
     asyncio.run(all_pgns_to_csv(
        pgn_file_paths=pgn_files,
-       white_games_path=WHITE_GAMES_CSV,
-       black_games_path=BLACK_GAMES_CSV,
+        white_games_path=WHITE_RNN_GAMES_CSV,
+       black_games_path=BLACK_RNN_GAMES_CSV,
        merge_old_csv=False,
        delete_csv_fragments=True,
     ))
@@ -284,14 +312,14 @@ def main():
     # generates two csvs of moves the AI will be able to use
     # each move is unique, no duplicates
     white_outputs_process = Process(target=create_output, args=(
-        WHITE_GAMES_CSV,
-        WHITE_MOVES_CSV,
+        WHITE_RNN_GAMES_CSV,
+        WHITE_RNN_MOVES_CSV,
     ))
     white_outputs_process.start()
 
     black_outputs_process = Process(target=create_output, args=(
-        BLACK_GAMES_CSV,
-        BLACK_MOVES_CSV,
+        BLACK_RNN_GAMES_CSV,
+        BLACK_RNN_MOVES_CSV,
     ))
     black_outputs_process.start()
 

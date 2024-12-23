@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 # own files
-from chess_csv import BLACK_MOVES_CSV, BLACK_GAMES_CSV, WHITE_MOVES_CSV, WHITE_GAMES_CSV
+from chess_csv import WHITE_MOVES_CSV, BLACK_MOVES_CSV
 from chess_annotation import bitboard_to_byteboard
 
 
