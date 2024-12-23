@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 # own files
-from chess_csv import black_moves_csv, white_moves_csv, local_csv_path
+from chess_csv import WHITE_MOVES_CSV, BLACK_MOVES_CSV
 from chess_annotation import bitboard_to_byteboard
 
 
@@ -74,9 +74,9 @@ def targets_to_numericals(color) -> dict:
     if type(color) is not bool:
         raise ValueError(f"Expected type {chess.COLORS} but received type {type(color)}")
     if color is True:
-        targets = pd.read_csv(local_csv_path + white_moves_csv, usecols=[0])
+        targets = pd.read_csv(WHITE_MOVES_CSV, usecols=[0])
     if color is False:
-        targets = pd.read_csv(local_csv_path + black_moves_csv, usecols=[0])
+        targets = pd.read_csv(BLACK_MOVES_CSV, usecols=[0])
 
     target_tensor_dict = {}
 

@@ -6,61 +6,6 @@ import logging
 save_dir = r"Games"
 os.makedirs(save_dir, exist_ok=True)
 
-# players to download games from
-players = [
-    # https://www.chess.com/ratings&page=1 19:57 08/31/2024
-    "magnuscarlsen",
-    "hikaru",
-    "fabianocaruana",
-    "ghandeevam2003",
-    "lachesisq",
-    "firouzja2003",
-    "chesswarrior7197",
-    "gukeshdommaraju",
-    "lovevae",
-    "gmwso",
-    "thevish",
-    "rpragchess",
-    "dominguezonyoutube",
-    "liemle",
-    "chefshouse",
-    "azerichess",
-    "polish_fighter3000",
-    "vincentkeymer",
-    "levonaronian",
-    "anishgiri",
-    "parhamov",
-    "lyonbeast",
-    "viditchess",
-    "mishanick",
-    "lordillidan",
-    "amintabatabaei",
-    "chesspanda123",
-    "wanghao",
-    "sibelephant",
-    "spicycaterpillar",
-    "tradjabov",
-    "vaathi_coming",
-    "psvidler",
-    "joppie2",
-    "duhless",
-    "chesswolf1210",
-    "bigfish1995",
-    "konavets",
-    "grischuk",
-    "gmharikrishna",
-    "alexandr_predke",
-    "solingen2020",
-    "evgenyt",
-    "radzio1987",
-    "bogdandeac",
-    "bilodeaua",
-    "colchonero64",
-    "dalmatinac101",
-    "andreikka",
-    # 49/50 players, 1 without chess.com account
-]
-
 # Chess.com returns HTML instead of JSON if useragent isn't Postman
 json_header = {
     'accept': 'application/json',
@@ -84,8 +29,12 @@ logging.basicConfig(
 def get_games_pgn(username: str) -> list[str]:
     """
     Downloads all public games that a Chess.com account has ever played as PGN
-    :param username: The user to download games from
-    :return: A list of PGN strings
+
+    Args:
+        username (str): The user to download games from
+
+    Returns:
+        list[str]: A list of PGN strings
     """
 
     # builds the player's game archive URL which is an index of all games
@@ -135,7 +84,20 @@ def get_games_pgn(username: str) -> list[str]:
     return filtered_games
 
 
-def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -> None:
+def save_game(unix_time: int, user_name: str, save_number: int, game_pgn: str) -> None:
+    """
+    Saves a string (PGN) to the Games directory in a file with the following format:
+    "UNIXTIME-USERNAME-GAME#.pgn"
+    The timestamp is useful when running the script multiple times
+    to deleted old data which could lead to overfitting otherwise.
+    The game number is just there to prevent overriding the PGN file. 
+
+    Args:
+        unix_time (int): timestamp used to distinguish between multiple runs
+        user_name (str): the username the PGN belongs to
+        save_number (int): save number preventing erasure of old PGNs
+        game_pgn (str): The PGN data itself
+    """
 
     try:
         save_file = f"{unix_time}-{user_name}-{save_number}.pgn"
@@ -149,22 +111,54 @@ def save_game(user_name: str, unix_time: int, save_number: int, game_pgn: str) -
 
 
 def process_games(player: str, start_time: int) -> int:
+    """
+    Downloads public games of a Chess.com account
+    and then saves them as individual PGN files
+
+    Args:
+        player (str): Chess.com username
+        start_time (int): UNIX time to prepend to PGN names
+
+    Returns:
+        int: exit status
+    """
     print(f"Downloading {player}'s games...")
     games: list[str] = get_games_pgn(player)
-    if not games:
+    if not games:   # make sure list is not None or empty
         logging.warning(f"No games acquired for player {player}")
         return 1
 
     print(f"Saving {player}'s PGNs...")
     for i, game in enumerate(games):
         save_game(
-            user_name=player,
             unix_time=start_time,
+            user_name=player,
             save_number=i,
             game_pgn=game
         )
 
     return 0
+
+
+def get_players_from_file(file_path: str) -> list[str]:
+    """
+    Reads the Chess.com usernames from a file containing values separated by line breaks.
+
+    Args:
+        file_path (str): the file to parse
+
+    Returns:
+        list[str]: a list containing the file's values
+    """
+    players: list[str] = []
+    try:
+        with open(file_path, 'r') as file:
+            # remove whitespaces and save strings between them into list
+            players = [line.strip() for line in file]
+    except (IOError, OSError) as error:
+        logging.fatal(f"Couldn't read {file_path}!", exc_info=True)
+        raise RuntimeError(f"Failed to read file: {file_path}") from error
+    return players
 
 
 def main(players: list[str]):
@@ -175,4 +169,7 @@ def main(players: list[str]):
 
 
 if __name__ == "__main__":
+    # not handling RuntimeError is intentional
+    # because the scraper can't work without a list; The Blacklist
+    players = get_players_from_file("rockyou.txt")
     main(players)

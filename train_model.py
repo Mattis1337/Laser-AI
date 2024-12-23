@@ -262,8 +262,13 @@ def train_chess_model() -> None:
     model.train()
     last_epoch = state['epoch']
 
+    # change this to the models parameter
+    is_recurrent = False
     # initializing the dataset
-    dataset = datasets.init_chess_dataset(color)
+    if is_recurrent is True:
+        dataset = datasets.init_chess_dataset(color, True)
+    else:
+        dataset = datasets.init_chess_dataset(color, False)
 
     # Initializing Dataloaders
     train_dataloader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=16)
