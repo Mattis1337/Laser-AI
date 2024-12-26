@@ -119,6 +119,7 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
             l = criterion(output.to(device), target.to(device))
             loss += l
 
+        # if the loss is scalar it can not be handled by the back propagation
         if loss.requires_grad is not False:
             loss.backward()
             optimizer.step()
@@ -127,7 +128,7 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
         running_loss += loss
 
         if batch % 100 == 0:
-            print(f"loss: {running_loss / batch}  [{batch:>5d}/{len(dataloader.dataset):>5d}]")
+            print(f"loss: {running_loss}  [{batch:>5d}/{len(dataloader.dataset):>5d}]")
             running_loss = 0
 
 
@@ -177,29 +178,36 @@ def test_rnn(dataloader, model, device):
     model.eval()
 
     total = 0
+    n_total = 0
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for i, data in enumerate(dataloader):
-            input_sequence, label = data
+        for batch, data in enumerate(dataloader):
+            input_sequence, target_sequence = data
+            hidden = model.initHidden()
 
-            if model.recurrent is True:
-                hidden = model.initHidden()
+            # getting rid of the batch dimension which effectively is 1 all the time
+            input_sequence = input_sequence[0]
+            target_sequence = target_sequence[0]
+
             # calculate outputs by running game states through the network
-            for j in range(input_sequence.size(0)):
-                output, hidden = model(input_sequence[j].to(device), hidden.to(device))
+            for i in range(input_sequence.size(0)):
+                output, hidden = model(input_sequence[i].to(device), hidden.to(device))
 
                 # getting the highest match of the AI output
                 pred = dt.get_highest_index(output[0], 1)
+                target = dt.get_highest_index(target_sequence[i], 1)
+                n_total += 1
 
                 # comparing if the AI's match is the same as the output
-                if int(label[0]) == int(pred[0]):
+                if int(target[0]) == int(pred[0]):
                     total += 1
 
-            if (i+1) % 10000 == 0:
-                print(f'Successfully tested {i+1} randomly shuffled game states!')
+            if (batch+1) % 100 == 0:
+                print(f'Successfully tested {n_total} randomly shuffled game states ({batch+1} games)!')
                 break
 
-    print(f'Accuracy of the network: {total/100}%')
+    print(f'Accuracy of the network: {(total/n_total)*100}%')
+    print(f'Predicted {total} moves out of {n_total} total moves correctly!')
     model.train()
 
 
@@ -276,7 +284,7 @@ def train_chess_model() -> None:
 
     # Initializing Dataloaders
     if model.recurrent is True:
-        train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=16)
+        train_dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=16)
         test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
     else:
         train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
@@ -304,9 +312,7 @@ def train_chess_model() -> None:
 
     # testing the model after all epochs
     if model.recurrent is True:
-        # test_rnn(test_dataloader, model, device)
-        print("Testing for rnn currently unavailable!")
-        pass
+        test_rnn(test_dataloader, model, device)
     else:
         test_cnn(test_dataloader, model, device)
 
