@@ -64,15 +64,18 @@ class ChessDataset(Dataset):
             return byteboards, target
 
         # if dataset should return a sequence of moves get each one from the hot encoded dict
-        targets = []
+        targets = torch.empty([len(label), get_output_length(self.color)])
 
-        for l in label:
+        for i, l in enumerate(label):
             # getting the transformed target of the label
             if l in self.targets_transformed:
-                targets.append(self.targets_transformed[l])
+                targets[i] = dt.create_targets_by_index(self.targets_transformed[l], get_output_length(self.color))
             else:
                 raise ValueError(f"Target for label not found in targets_transformed: {l} (label)!",
                                  "Update file containing all moves!")
+        # transforming labels and byteboards to tensors
+        byteboards.clone().detach()
+
         # return the bitboards and the label as a tensor
         return byteboards, targets
 

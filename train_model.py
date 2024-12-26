@@ -4,6 +4,7 @@ import chess
 import chess as c
 import numpy as np
 import torch
+from numpy.f2py.auxfuncs import throw_error
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -12,6 +13,7 @@ import chess_annotation
 import datasets
 import data_transformations as dt
 import models
+from data_transformations import targets_to_numericals
 
 OUTPUTS_WHITE: dict[str, int] = dt.targets_to_numericals(c.WHITE)
 OUTPUTS_BLACK: dict[str, int] = dt.targets_to_numericals(c.BLACK)
@@ -99,7 +101,6 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
     for batch, data in enumerate(dataloader, 0):
         input_sequence, target_sequence = data
         # TODO: when fitting dataset is available the data dimensions will change
-        target_sequence.unsqueeze_(-1)
         hidden = model.initHidden()
 
         model.zero_grad()
@@ -107,23 +108,27 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
 
         loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
 
+        # getting rid of the batch dimension which effectively is 1 all the time
+        input_sequence = input_sequence[0]
+        target_sequence = target_sequence[0]
+
         # iterating through all previous moves
         for i in range(input_sequence.size(0)):
             output, hidden = model(input_sequence[i].to(device), hidden.to(device))
-            l = criterion(output, target_sequence[i].to(device))
+            target = torch.unsqueeze(target_sequence[i], dim=0)
+            l = criterion(output.to(device), target.to(device))
             loss += l
 
-        loss.backward()
-        optimizer.step()
+        if loss.requires_grad is not False:
+            loss.backward()
+            optimizer.step()
+        else:
+            print("passing")
         running_loss += loss
 
-        if (batch+1) % 100 == 0:
-            current = (batch + 1) * len(input_sequence)
-            print(f"loss: {running_loss / (dataloader.batch_size * 100)}  [{current:>5d}/{len(dataloader.dataset):>5d}]")
+        if batch % 100 == 0:
+            print(f"loss: {running_loss / batch}  [{batch:>5d}/{len(dataloader.dataset):>5d}]")
             running_loss = 0
-
-            # TODO: as iterating through the whole dataset takes too long
-            if (batch + 1) % 1000 == 0: return
 
 
 def test_cnn(dataloader, model, device):
@@ -262,17 +267,20 @@ def train_chess_model() -> None:
     model.train()
     last_epoch = state['epoch']
 
-    # change this to the models parameter
-    is_recurrent = False
     # initializing the dataset
-    if is_recurrent is True:
+    if model.recurrent is True:
         dataset = datasets.init_chess_dataset(color, True)
+        print("work")
     else:
         dataset = datasets.init_chess_dataset(color, False)
 
     # Initializing Dataloaders
-    train_dataloader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=16)
-    test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
+    if model.recurrent is True:
+        train_dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=16)
+        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
+    else:
+        train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
+        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
@@ -296,7 +304,9 @@ def train_chess_model() -> None:
 
     # testing the model after all epochs
     if model.recurrent is True:
-        test_rnn(test_dataloader, model, device)
+        # test_rnn(test_dataloader, model, device)
+        print("Testing for rnn currently unavailable!")
+        pass
     else:
         test_cnn(test_dataloader, model, device)
 
