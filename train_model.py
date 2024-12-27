@@ -30,10 +30,14 @@ def init_new_model():
               '1) Black' + '\n' +
               '2) White')
 
-        col_index = int(input('Pick an option 1-2:'))
-        if col_index in [1, 2]:
-            break
-        print(f'Specified option {col_index} is invalid!')
+        try:
+            col_index = int(input('Pick an option 1-2:'))
+            if col_index in [1, 2]:
+                break
+            print(f'Specified option {col_index} is invalid!')
+        except ValueError:
+            print(f'Please only use integer values as input!')
+            pass
 
     if col_index == 1:
         color = chess.BLACK
@@ -47,6 +51,21 @@ def init_new_model():
 
     # entering new path to save the model to
     path = input('Insert name for the new model state (.pth will be appended!): ')
+
+    while True:
+        ans = int(input('Would you like to warmstart the model using already pr trained weights? (y=0, n=1)'))
+        try:
+            if ans not in [0, 1]:
+                print(int(ans))
+                print('Invalid answer! (0/1 only)')
+                continue
+            if ans == 0:
+                _, pre_path = load_model(None)
+                model.load_state_dict(torch.load('models/'+pre_path, weights_only=True), strict=False)
+                break
+        except ValueError:
+            print(f'Please only use integer values as input!')
+            pass
 
     # saving untrained model with unused optimizer
     save_trained_model(color, model, 0, optimizer, path+'.pth')
