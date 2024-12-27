@@ -44,8 +44,8 @@ class RandomCrop(object):
         return {'image': image, 'landmarks': landmarks}
 
 
-def to_tensor(sample):
-    return torch.from_numpy(sample)
+def to_tensor(sample, grad=False):
+    return torch.tensor(sample, requires_grad=grad)
 
 
 def transform_bitboards(bitboards):

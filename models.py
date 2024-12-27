@@ -66,14 +66,12 @@ class NeuralNetwork(nn.Module):
         for module in self.fc_seq:
             if isinstance(module, nn.RNN):
                 x = x.squeeze(-1)
-                # changing dimension from [x] to [x + hidden]
-                x = torch.cat((x, hidden), 1)
-                x, _ = module(x)
+                _, x = module(x)
             else:
                 x = module(x)
 
         x = self.out_fc(x)
-        return x, hidden
+        return x
 
     # TODO: (1) more clean way of handling the hidden layer is needed
     def initHidden(self):
@@ -116,6 +114,8 @@ def get_current_topology():
         "Unpadded convolutional layer (without pooling)": NOPOOL_BIGFC_LAYER,
         "Pooling Dropout Softmax": POOLING_DROPOUT,
         "Recurrent convolutional network": RECURRENT_CONV,
+        "Recurrent convolutional network (smaller fc)": MINI_RECURRENT,
+        "LSTM convolutional network": LSTM_CONV,
     }
     invalid = True
     while invalid is True:
@@ -145,13 +145,12 @@ def get_output_shape(model, image_dim):
     # TODO: this has to be reconfigured (see todo1)
     for module in model:
         if isinstance(module, nn.RNN):
-            x = torch.cat((x, x), 0)
             x = torch.unsqueeze(x, 0)
-            x, _ = module(x)
+            _, x = module(x)
         else:
             x = module(x)
 
-    if isinstance(model[0], nn.RNN):
+    if isinstance(model[0], nn.RNN) or isinstance(model[0], nn.LSTM):
         return [np.shape(x)[1]]
 
     return np.shape(x)
@@ -264,6 +263,38 @@ RECURRENT_CONV: list[nn.Sequential] = [
         nn.Linear(192, 576),
         nn.ReLU(),
         nn.Linear(576, 1728),
+        nn.ReLU(),
+    ),
+    True,
+]
+
+MINI_RECURRENT: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, 5),
+        nn.ReLU(),
+        nn.Conv2d(32, 64, 4),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.RNN(64, 576, batch_first=True),
+        nn.ReLU(),
+        nn.Linear(576, 1152),
+        nn.ReLU(),
+    ),
+    True,
+]
+
+LSTM_CONV: list[nn.Sequential] = [
+    nn.Sequential(
+        nn.Conv2d(12, 32, 5),
+        nn.ReLU(),
+        nn.Conv2d(32, 64, 4),
+        nn.ReLU(),
+    ),
+    nn.Sequential(
+        nn.LSTM(64+64+64, 576, batch_first=True),
+        nn.ReLU(),
+        nn.Linear(576, 1152),
         nn.ReLU(),
     ),
     True,

@@ -39,7 +39,7 @@ class ChessDataset(Dataset):
         bitboards = self.data[idx]
         byteboards = []
         if self.rnn is True:
-            bitboards = bitboards[0]
+            bitboards = bitboards[0][0]
             for game in bitboards:
                 byteboards.append(dt.transform_bitboards(game))
             # turning the list into a np.array so the transform works
@@ -63,8 +63,10 @@ class ChessDataset(Dataset):
             # return the bitboards and the label as a tensor
             return byteboards, target
 
+        label = label[0]
+
         # if dataset should return a sequence of moves get each one from the hot encoded dict
-        targets = torch.empty([len(label), get_output_length(self.color)])
+        targets = np.empty([len(label), get_output_length(self.color)])
 
         for i, l in enumerate(label):
             # getting the transformed target of the label
@@ -73,6 +75,9 @@ class ChessDataset(Dataset):
             else:
                 raise ValueError(f"Target for label not found in targets_transformed: {l} (label)!",
                                  "Update file containing all moves!")
+
+        if self.transform:
+            targets = self.transform(targets, True)
         # transforming labels and byteboards to tensors
         byteboards.clone().detach()
 

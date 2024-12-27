@@ -7,13 +7,13 @@ import torch
 from numpy.f2py.auxfuncs import throw_error
 from torch import nn
 from torch.utils.data import DataLoader
+from random import shuffle
 
 # importing own files
 import chess_annotation
 import datasets
 import data_transformations as dt
 import models
-from data_transformations import targets_to_numericals
 
 OUTPUTS_WHITE: dict[str, int] = dt.targets_to_numericals(c.WHITE)
 OUTPUTS_BLACK: dict[str, int] = dt.targets_to_numericals(c.BLACK)
@@ -62,7 +62,7 @@ def init_new_model():
             if ans == 0:
                 _, pre_path = load_model(None)
                 model.load_state_dict(torch.load('models/'+pre_path, weights_only=True), strict=False)
-                break
+            break
         except ValueError:
             print(f'Please only use integer values as input!')
             pass
@@ -92,7 +92,7 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
         optimizer.zero_grad(set_to_none=True)
 
         # forward + backward + optimize
-        pred, _ = model(inputs.to(device))
+        pred = model(inputs.to(device))
         loss = criterion(pred, labels.to(device))
         loss.backward()
         optimizer.step()
@@ -107,33 +107,34 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
     print("Epoch done!")
 
 
-def train_rnn(dataloader, model, criterion, optimizer, device):
+def train_rnn(dataset, model, criterion, optimizer, device):
     """
     Training a recurrent neural network
-    :param dataloader: the dataloader containing the white/black moves which shall be used for testing
+    :param dataset: the dataloader containing the white/black moves which shall be used for testing
     :param model: a model object instantiated from NeuralNetwork
     :param criterion: loss function
     :param optimizer: the optimizer used for enhancing the training algorithm
     :param device: the device currently used for training
     """
     running_loss = 0
-    for batch, data in enumerate(dataloader, 0):
-        input_sequence, target_sequence = data
+    model.zero_grad()
+
+    order = [[i] for i in range(len(dataset.data))]
+    print(f'Training on {len(dataset.data)} randomly shuffled games!')
+    shuffle(order)
+
+    for batch, idx in enumerate(order):
+        input_sequence, target_sequence = dataset.__getitem__(idx)
         # TODO: when fitting dataset is available the data dimensions will change
         hidden = model.initHidden()
 
-        model.zero_grad()
         optimizer.zero_grad(set_to_none=True)
 
         loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
 
-        # getting rid of the batch dimension which effectively is 1 all the time
-        input_sequence = input_sequence[0]
-        target_sequence = target_sequence[0]
-
         # iterating through all previous moves
         for i in range(input_sequence.size(0)):
-            output, hidden = model(input_sequence[i].to(device), hidden.to(device))
+            output = model(input_sequence[i].to(device), hidden.to(device))
             target = torch.unsqueeze(target_sequence[i], dim=0)
             l = criterion(output.to(device), target.to(device))
             loss += l
@@ -147,7 +148,7 @@ def train_rnn(dataloader, model, criterion, optimizer, device):
         running_loss += loss
 
         if batch % 100 == 0:
-            print(f"loss: {running_loss}  [{batch:>5d}/{len(dataloader.dataset):>5d}]")
+            print(f"loss: {running_loss}  [{batch:>5d}/{len(dataset.data):>5d}]")
             running_loss = 0
 
 
@@ -297,17 +298,9 @@ def train_chess_model() -> None:
     # initializing the dataset
     if model.recurrent is True:
         dataset = datasets.init_chess_dataset(color, True)
-        print("work")
     else:
         dataset = datasets.init_chess_dataset(color, False)
-
-    # Initializing Dataloaders
-    if model.recurrent is True:
-        train_dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=16)
-        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
-    else:
         train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
-        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
@@ -318,7 +311,7 @@ def train_chess_model() -> None:
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
         if model.recurrent is True:
-            train_rnn(train_dataloader, model, criterion, optimizer, device)
+            train_rnn(dataset, model, criterion, optimizer, device)
         else:
             train_cnn(train_dataloader, model, criterion, optimizer, device)
 
@@ -331,8 +324,10 @@ def train_chess_model() -> None:
 
     # testing the model after all epochs
     if model.recurrent is True:
+        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
         test_rnn(test_dataloader, model, device)
     else:
+        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
         test_cnn(test_dataloader, model, device)
 
     print("Done!")
