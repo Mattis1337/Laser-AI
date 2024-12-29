@@ -8,7 +8,6 @@ After that some info is printed to STDOUT and lastly the game starts.
 # import numpy as np
 import argparse
 import chess
-import torch
 
 # importing own files
 import train_model

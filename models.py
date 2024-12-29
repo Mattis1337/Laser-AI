@@ -258,7 +258,7 @@ RECURRENT_CONV: list[nn.Sequential] = [
         nn.ReLU(),
     ),
     nn.Sequential(
-        nn.RNN(64+64, 192, batch_first=True),
+        nn.RNN(64, 192, batch_first=True),
         nn.ReLU(),
         nn.Linear(192, 576),
         nn.ReLU(),

@@ -1,4 +1,5 @@
 import os.path
+from time import time
 
 import chess
 import chess as c
@@ -110,13 +111,14 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
 def train_rnn(dataset, model, criterion, optimizer, device):
     """
     Training a recurrent neural network
-    :param dataset: the dataloader containing the white/black moves which shall be used for testing
+    :param dataset: the dataset containing the white/black moves which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
     :param criterion: loss function
     :param optimizer: the optimizer used for enhancing the training algorithm
     :param device: the device currently used for training
     """
     running_loss = 0
+    total_states = 0
     model.zero_grad()
 
     order = [[i] for i in range(len(dataset.data))]
@@ -125,16 +127,20 @@ def train_rnn(dataset, model, criterion, optimizer, device):
 
     for batch, idx in enumerate(order):
         input_sequence, target_sequence = dataset.__getitem__(idx)
-        # TODO: when fitting dataset is available the data dimensions will change
-        hidden = model.initHidden()
+        input_sequence.unsqueeze(-1)
+        if input_sequence.size(0) == 0:
+            continue
+        input_sequence.to(memory_format=torch.channels_last)
 
         optimizer.zero_grad(set_to_none=True)
 
         loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
 
+        input_sequence.squeeze(1)
         # iterating through all previous moves
         for i in range(input_sequence.size(0)):
-            output = model(input_sequence[i].to(device), hidden.to(device))
+            total_states += 1
+            output = model(input_sequence[i].to(device))
             target = torch.unsqueeze(target_sequence[i], dim=0)
             l = criterion(output.to(device), target.to(device))
             loss += l
@@ -148,8 +154,11 @@ def train_rnn(dataset, model, criterion, optimizer, device):
         running_loss += loss
 
         if batch % 100 == 0:
-            print(f"loss: {running_loss}  [{batch:>5d}/{len(dataset.data):>5d}]")
+            print(f"average loss: {running_loss/total_states}  [{batch:>5d}/{len(dataset.data):>5d}]")
             running_loss = 0
+            total_states = 0
+            if batch+1 % 1000 == 0:
+                return
 
 
 def test_cnn(dataloader, model, device):
@@ -186,24 +195,27 @@ def test_cnn(dataloader, model, device):
     model.train()
 
 
-def test_rnn(dataloader, model, device):
+def test_rnn(dataset, model, device):
     """
     Testing the accuracy of a given recurrent model by calculating the total error in a given output by averaging the error per
     digit in an output and adding it.
-    :param dataloader: the dataloader containing the white/black moves which shall be used for testing
+    :param dataset: the dataset containing the white/black moves which shall be used for training
     :param model: a model object instantiated from NeuralNetwork
     :param device: the device currently used for testing
     """
 
     model.eval()
+    # enabling oneDNN graphs for better performance
+    torch.jit.enable_onednn_fusion(True)
+    model = torch.jit.trace(model, torch.zeros([12, 8, 8]))
 
     total = 0
     n_total = 0
+    order = [[i] for i in range(len(dataset.data))]
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
-        for batch, data in enumerate(dataloader):
-            input_sequence, target_sequence = data
-            hidden = model.initHidden()
+        for batch, idx in enumerate(order):
+            input_sequence, target_sequence = dataset.__getitem__(idx)
 
             # getting rid of the batch dimension which effectively is 1 all the time
             input_sequence = input_sequence[0]
@@ -211,7 +223,7 @@ def test_rnn(dataloader, model, device):
 
             # calculate outputs by running game states through the network
             for i in range(input_sequence.size(0)):
-                output, hidden = model(input_sequence[i].to(device), hidden.to(device))
+                _, output = model(input_sequence[i].to(device))
 
                 # getting the highest match of the AI output
                 pred = dt.get_highest_index(output[0], 1)
@@ -246,6 +258,10 @@ def train_chess_model() -> None:
         except ValueError:
             print(f'Expected epochs to be of type {int}!')
 
+    # setting the number of usable threads
+    # USE AT OWN RISK
+    torch.set_num_threads(12)
+
     # disabling debugging APIs
     set_debug_apis(False)
 
@@ -265,7 +281,7 @@ def train_chess_model() -> None:
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
     learning_rate = 1e-4
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
@@ -288,7 +304,7 @@ def train_chess_model() -> None:
             model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(color))
     else:
         # loading optimizer and model state only when the output size has not changed
-        optimizer.load_state_dict(state['optimizer_state_dict'])
+        # optimizer.load_state_dict(state['optimizer_state_dict'])
         model.load_state_dict(state['model_state_dict'])
 
     # setting model into training mode
@@ -298,9 +314,10 @@ def train_chess_model() -> None:
     # initializing the dataset
     if model.recurrent is True:
         dataset = datasets.init_chess_dataset(color, True)
+        model.to(memory_format=torch.channels_last)
     else:
         dataset = datasets.init_chess_dataset(color, False)
-        train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=16)
+        train_dataloader = DataLoader(dataset, batch_size=128, shuffle=True, num_workers=1)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
@@ -324,8 +341,8 @@ def train_chess_model() -> None:
 
     # testing the model after all epochs
     if model.recurrent is True:
-        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
-        test_rnn(test_dataloader, model, device)
+        # test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
+        test_rnn(dataset, model, device)
     else:
         test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
         test_cnn(test_dataloader, model, device)
@@ -463,7 +480,8 @@ def set_debug_apis(state: bool):
     :param state: set APIs to True or False
     """
     torch.autograd.set_detect_anomaly(state)
-    torch.autograd.profiler.emit_nvtx = state
+    torch.autograd.profiler.emit_nvtx(state)
     # The following docs elaborate on the usage of the profiler
     # https://pytorch.org/docs/stable/profiler.html
-    torch.autograd.profiler.profile = state
+    torch.autograd.profiler.profile(state)
+
