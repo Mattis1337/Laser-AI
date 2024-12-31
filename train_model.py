@@ -121,8 +121,8 @@ def train_rnn(dataset, model, criterion, optimizer, device):
     total_states = 0
     model.zero_grad()
 
-    order = [[i] for i in range(len(dataset.data))]
-    print(f'Training on {len(dataset.data)} randomly shuffled games!')
+    order = [[i] for i in range(len(dataset))]
+    print(f'Training on {len(dataset.transformed_games)} randomly shuffled games!')
     shuffle(order)
 
     for batch, idx in enumerate(order):
@@ -153,12 +153,10 @@ def train_rnn(dataset, model, criterion, optimizer, device):
             print("passing")
         running_loss += loss
 
-        if batch % 100 == 0:
-            print(f"average loss: {running_loss/total_states}  [{batch:>5d}/{len(dataset.data):>5d}]")
+        if batch % 1000 == 0:
+            print(f"average loss: {running_loss/total_states}  [{batch:>5d}/{len(dataset):>5d}]")
             running_loss = 0
             total_states = 0
-            if batch+1 % 1000 == 0:
-                return
 
 
 def test_cnn(dataloader, model, device):
@@ -179,7 +177,7 @@ def test_cnn(dataloader, model, device):
             image, label = data
 
             # calculate outputs by running game states through the network
-            pred, _ = model(image.to(device))
+            pred = model(image.to(device))
             # getting the highest match of the AI output
             pred = dt.get_highest_index(pred[0], 1)
 
@@ -211,7 +209,7 @@ def test_rnn(dataset, model, device):
 
     total = 0
     n_total = 0
-    order = [[i] for i in range(len(dataset.data))]
+    order = [[i] for i in range(len(dataset))]
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for batch, idx in enumerate(order):
@@ -223,7 +221,7 @@ def test_rnn(dataset, model, device):
 
             # calculate outputs by running game states through the network
             for i in range(input_sequence.size(0)):
-                _, output = model(input_sequence[i].to(device))
+                output = model(input_sequence.to(device))
 
                 # getting the highest match of the AI output
                 pred = dt.get_highest_index(output[0], 1)
@@ -260,7 +258,7 @@ def train_chess_model() -> None:
 
     # setting the number of usable threads
     # USE AT OWN RISK
-    torch.set_num_threads(12)
+    torch.set_num_threads(8)
 
     # disabling debugging APIs
     set_debug_apis(False)
@@ -281,7 +279,10 @@ def train_chess_model() -> None:
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
     learning_rate = 1e-4
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    if model.recurrent is True:
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
 
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
@@ -304,30 +305,37 @@ def train_chess_model() -> None:
             model.fc3 = nn.Linear(num_ftrs, datasets.get_output_length(color))
     else:
         # loading optimizer and model state only when the output size has not changed
-        # optimizer.load_state_dict(state['optimizer_state_dict'])
+        optimizer.load_state_dict(state['optimizer_state_dict'])
         model.load_state_dict(state['model_state_dict'])
 
     # setting model into training mode
     model.train()
     last_epoch = state['epoch']
 
-    # initializing the dataset
     if model.recurrent is True:
+        # initializing RNN dataset
         dataset = datasets.init_chess_dataset(color, True)
+        # changing memory format for RNN models
         model.to(memory_format=torch.channels_last)
     else:
+        # initializing the dataset/dataloader for CNN models
         dataset = datasets.init_chess_dataset(color, False)
-        train_dataloader = DataLoader(dataset, batch_size=128, shuffle=True, num_workers=1)
+        train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
     # Number of trainable parameters
     print(sum(p.numel() for p in model.parameters() if p.requires_grad))
 
+    # amount of iterations after which a new random sampled dataset should be created
+    same_sample_iters = 5
+
     # Train the network for the set epoch size
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
         if model.recurrent is True:
+            if epoch+1 % same_sample_iters == 0:
+                dataset = datasets.init_chess_dataset(color, True)
             train_rnn(dataset, model, criterion, optimizer, device)
         else:
             train_cnn(train_dataloader, model, criterion, optimizer, device)

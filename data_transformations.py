@@ -141,8 +141,6 @@ def create_targets_by_index(index, size):
     tensor = torch.zeros(size)
     # setting the target to 1 at index for current label
     tensor[index] = 1
-    # changing tensor to torch.float32
-    tensor = tensor.to(torch.float32)
 
     return tensor
 
