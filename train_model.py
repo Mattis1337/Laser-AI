@@ -48,7 +48,11 @@ def init_new_model():
     outputs = datasets.get_output_length(color)
     # setting the fitting topology of an untrained network
     model = models.init_neural_network(outputs)
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+
+    if model.recurrent is True:
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    else:
+        optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
     # entering new path to save the model to
     path = input('Insert name for the new model state (.pth will be appended!): ')
