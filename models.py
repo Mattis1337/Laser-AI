@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
+from torch import jit
 import torch.nn.functional as F
 
 
@@ -51,14 +52,14 @@ class RetroLaserAI(nn.Module):
 
 
 class NeuralNetwork(nn.Module):
-    def __init__(self, conv_seq, fc_seq, outputs, recurrent=False):
+    def __init__(self, conv_seq, fc_seq, fc_out, recurrent=False):
         super().__init__()
         self.conv_seq = conv_seq
         self.fc_seq = fc_seq
         self.recurrent = recurrent
-        self.out_fc = nn.Linear(get_output_shape(fc_seq, get_output_shape(conv_seq, [12, 8, 8])[0])[0], outputs)
+        self.out_fc = fc_out
 
-    def forward(self, x, hidden=None):
+    def forward(self, x) -> torch.Tensor:
         x = self.conv_seq(x)
         x = torch.flatten(x, 1)
         if self.recurrent:
@@ -67,15 +68,12 @@ class NeuralNetwork(nn.Module):
             if isinstance(module, nn.RNN):
                 x = x.squeeze(-1)
                 _, x = module(x)
+                x = x[0]
             else:
                 x = module(x)
 
         x = self.out_fc(x)
         return x
-
-    # TODO: (1) more clean way of handling the hidden layer is needed
-    def initHidden(self):
-        return torch.zeros(1, get_output_shape(self.conv_seq, [12, 8, 8])[0])
 
 
 def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
@@ -84,15 +82,19 @@ def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
     :param outputs: number of outputs for the last layer
     :param topology: if provided the specified topology will be initialised
     """
+
     if topology is not None:
-        return NeuralNetwork(topology[0], topology[1], outputs)
+        fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
+        return NeuralNetwork(topology[0], topology[1], fc_out)
 
     topology = get_current_topology()
 
-    if isinstance(topology[-1], bool):
-        return NeuralNetwork(topology[0], topology[1], outputs, topology[-1])
+    fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
 
-    return NeuralNetwork(topology[0], topology[1], outputs)
+    if isinstance(topology[-1], bool):
+        return NeuralNetwork(topology[0], topology[1], fc_out, topology[-1])
+
+    return NeuralNetwork(topology[0], topology[1], fc_out)
 
 
 def get_current_topology():

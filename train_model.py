@@ -1,11 +1,11 @@
 import os.path
-from time import time
 
 import chess
 import chess as c
 import numpy as np
 import torch
-from numpy.f2py.auxfuncs import throw_error
+from numpy.ma.core import squeeze
+from sympy.codegen.ast import continue_
 from torch import nn
 from torch.utils.data import DataLoader
 from random import shuffle
@@ -57,7 +57,6 @@ def init_new_model():
         ans = int(input('Would you like to warmstart the model using already pr trained weights? (y=0, n=1)'))
         try:
             if ans not in [0, 1]:
-                print(int(ans))
                 print('Invalid answer! (0/1 only)')
                 continue
             if ans == 0:
@@ -141,8 +140,7 @@ def train_rnn(dataset, model, criterion, optimizer, device):
         for i in range(input_sequence.size(0)):
             total_states += 1
             output = model(input_sequence[i].to(device))
-            target = torch.unsqueeze(target_sequence[i], dim=0)
-            l = criterion(output.to(device), target.to(device))
+            l = criterion(output.to(device), target_sequence[i].to(device))
             loss += l
 
         # if the loss is scalar it can not be handled by the back propagation
@@ -205,34 +203,35 @@ def test_rnn(dataset, model, device):
     model.eval()
     # enabling oneDNN graphs for better performance
     torch.jit.enable_onednn_fusion(True)
-    model = torch.jit.trace(model, torch.zeros([12, 8, 8]))
 
     total = 0
     n_total = 0
-    order = [[i] for i in range(len(dataset))]
+    order = [[j] for j in range(len(dataset))]
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for batch, idx in enumerate(order):
             input_sequence, target_sequence = dataset.__getitem__(idx)
 
+            if input_sequence.size(0) == 0:
+                print(f"Skipping malformed data: {input_sequence.size()} (dimension)")
+                continue
             # getting rid of the batch dimension which effectively is 1 all the time
-            input_sequence = input_sequence[0]
-            target_sequence = target_sequence[0]
+            input_sequence.unsqueeze(-1)
 
             # calculate outputs by running game states through the network
-            for i in range(input_sequence.size(0)):
-                output = model(input_sequence.to(device))
+            for seq_idx in range(len(input_sequence)):
+                output = model(input_sequence[seq_idx].to(device))
 
                 # getting the highest match of the AI output
-                pred = dt.get_highest_index(output[0], 1)
-                target = dt.get_highest_index(target_sequence[i], 1)
+                pred = dt.get_highest_index(output, 1)
+                target = dt.get_highest_index(target_sequence[seq_idx], 1)
                 n_total += 1
 
                 # comparing if the AI's match is the same as the output
                 if int(target[0]) == int(pred[0]):
                     total += 1
 
-            if (batch+1) % 100 == 0:
+            if (batch+1) % 1000 == 0:
                 print(f'Successfully tested {n_total} randomly shuffled game states ({batch+1} games)!')
                 break
 
@@ -289,7 +288,6 @@ def train_chess_model() -> None:
         # change the dimension of the output
         if isinstance(model, models.NeuralNetwork):
             num_ftrs = model.out_fc.in_features
-            output_layer = model.out_fc
             model.out_fc = nn.Linear(num_ftrs, old_outputs)
             # loading the pre-trained model with the old outputs
             model.load_state_dict(state['model_state_dict'], strict=False)
@@ -334,8 +332,9 @@ def train_chess_model() -> None:
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
         if model.recurrent is True:
-            if epoch+1 % same_sample_iters == 0:
-                dataset = datasets.init_chess_dataset(color, True)
+            if epoch % same_sample_iters == 0 and epoch != 0:
+                # switching up the loaded samples
+                dataset.__sample__()
             train_rnn(dataset, model, criterion, optimizer, device)
         else:
             train_cnn(train_dataloader, model, criterion, optimizer, device)
@@ -351,6 +350,7 @@ def train_chess_model() -> None:
     if model.recurrent is True:
         # test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
         test_rnn(dataset, model, device)
+        pass
     else:
         test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
         test_cnn(test_dataloader, model, device)

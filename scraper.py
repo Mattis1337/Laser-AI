@@ -26,6 +26,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
 )
 
+
 def get_games_pgn(username: str) -> list[str]:
     """
     Downloads all public games that a Chess.com account has ever played as PGN
