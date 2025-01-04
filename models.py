@@ -279,7 +279,7 @@ MINI_RECURRENT: list[nn.Sequential] = [
     ),
     nn.Sequential(
         nn.RNN(64, 576, batch_first=True),
-        nn.ReLU(),
+        nn.Tanh(),
         nn.Linear(576, 1152),
         nn.ReLU(),
     ),
