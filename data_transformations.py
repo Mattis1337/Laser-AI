@@ -45,6 +45,7 @@ class RandomCrop(object):
 
 
 def to_tensor(sample, grad=False):
+
     return torch.tensor(sample, requires_grad=grad)
 
 

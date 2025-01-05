@@ -5,6 +5,7 @@ import chess as c
 import numpy as np
 import torch
 from numpy.ma.core import squeeze
+from requests.packages import target
 from sympy.codegen.ast import continue_
 from torch import nn
 from torch.utils.data import DataLoader
@@ -49,8 +50,11 @@ def init_new_model():
     # setting the fitting topology of an untrained network
     model = models.init_neural_network(outputs)
 
-    if model.recurrent is True:
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    if hasattr(model, 'recurrent'):
+        if model.recurrent is True:
+            optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+        else:
+            optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
 
@@ -64,8 +68,9 @@ def init_new_model():
                 print('Invalid answer! (0/1 only)')
                 continue
             if ans == 0:
-                _, pre_path = load_model(None)
+                state, pre_path = load_model(None)
                 model.load_state_dict(torch.load('models/'+pre_path, weights_only=True), strict=False)
+                optimizer.load_state_dict(state['optimizer_state_dict'])
             break
         except ValueError:
             print(f'Please only use integer values as input!')
@@ -161,6 +166,54 @@ def train_rnn(dataset, model, criterion, optimizer, device):
             total_states = 0
 
 
+def train_lstm(dataset, criterion, model, optimizer, device):
+    """Training an lstm"""
+    running_loss = 0
+    total_states = 0
+    model.zero_grad()
+
+    order = [[i] for i in range(len(dataset))]
+    print(f'Training on {len(dataset.transformed_games)} randomly shuffled games!')
+    shuffle(order)
+
+    for batch, idx in enumerate(order):
+        input_sequence, target_sequence = dataset.__getitem__(idx)
+        input_sequence.unsqueeze(-1)
+        if input_sequence.size(0) == 0:
+            continue
+
+        optimizer.zero_grad(set_to_none=True)
+
+        loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
+        h0, c0 = None, None
+
+        input_sequence.squeeze(1)
+        # iterating through all previous moves
+        for i in range(input_sequence.size(0)):
+            target = torch.unsqueeze(target_sequence[i], 0)
+            total_states += 1
+            output, h0, c0 = model(input_sequence[i].to(device), h0, c0)
+            l = criterion(output.to(device), target.to(device))
+            loss += l
+
+        # if the loss is scalar it can not be handled by the back propagation
+        if loss.requires_grad is not False:
+            loss.backward()
+            optimizer.step()
+        else:
+            print("passing")
+        running_loss += loss
+
+        # Detach hidden and cell states to prevent backpropagation through the entire sequence
+        h0.detach()
+        c0.detach()
+
+        if batch % 1000 == 0:
+            print(f"average loss: {running_loss/total_states}  [{batch:>5d}/{len(dataset):>5d}]")
+            running_loss = 0
+            total_states = 0
+
+
 def test_cnn(dataloader, model, device):
     """
     Testing the accuracy of a given model by calculating the total error in a given output by averaging the error per
@@ -244,6 +297,57 @@ def test_rnn(dataset, model, device):
     model.train()
 
 
+def test_lstm(dataset, model, device):
+    """
+    Testing the accuracy of a given recurrent model by calculating the total error in a given output by averaging the error per
+    digit in an output and adding it.
+    :param dataset: the dataset containing the white/black moves which shall be used for training
+    :param model: a model object instantiated from NeuralNetwork
+    :param device: the device currently used for testing
+    """
+
+    model.eval()
+    # enabling oneDNN graphs for better performance
+    torch.jit.enable_onednn_fusion(True)
+
+    total = 0
+    n_total = 0
+    order = [[j] for j in range(len(dataset))]
+    # since we're not training, we don't need to calculate the gradients for our outputs
+    with torch.no_grad():
+        for batch, idx in enumerate(order):
+            input_sequence, target_sequence = dataset.__getitem__(idx)
+
+            if input_sequence.size(0) == 0:
+                print(f"Skipping malformed data: {input_sequence.size()} (dimension)")
+                continue
+            # getting rid of the batch dimension which effectively is 1 all the time
+            input_sequence.unsqueeze(-1)
+
+            # calculate outputs by running game states through the network
+            for seq_idx in range(len(input_sequence)):
+                output, _, _ = model(input_sequence[seq_idx].to(device))
+
+                output = torch.squeeze(output, 0)
+
+                # getting the highest match of the AI output
+                pred = dt.get_highest_index(output, 1)
+                target = dt.get_highest_index(target_sequence[seq_idx], 1)
+                n_total += 1
+
+                # comparing if the AI's match is the same as the output
+                if int(target[0]) == int(pred[0]):
+                    total += 1
+
+            if (batch+1) % 1000 == 0:
+                print(f'Successfully tested {n_total} randomly shuffled game states ({batch+1} games)!')
+                break
+
+    print(f'Accuracy of the network: {(total/n_total)*100}%')
+    print(f'Predicted {total} moves out of {n_total} total moves correctly!')
+    model.train()
+
+
 # full iterations training
 def train_chess_model() -> None:
     """
@@ -282,11 +386,13 @@ def train_chess_model() -> None:
     criterion = nn.CrossEntropyLoss()
     # https://amarsaini.github.io/Optimizer-Benchmarks/
     learning_rate = 1e-4
-    if model.recurrent is True:
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    if hasattr(model, 'recurrent'):
+        if model.recurrent is True:
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        else:
+            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
-
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
@@ -314,15 +420,20 @@ def train_chess_model() -> None:
     model.train()
     last_epoch = state['epoch']
 
-    if model.recurrent is True:
+    if hasattr(model, 'recurrent'):
+        if model.recurrent is True:
+            # initializing RNN dataset
+            dataset = datasets.init_chess_dataset(color, True)
+            # changing memory format for RNN models
+            model.to(memory_format=torch.channels_last)
+        else:
+            # initializing the dataset/dataloader for CNN models
+            dataset = datasets.init_chess_dataset(color, False)
+            train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+    else:
+        criterion = nn.CrossEntropyLoss()
         # initializing RNN dataset
         dataset = datasets.init_chess_dataset(color, True)
-        # changing memory format for RNN models
-        model.to(memory_format=torch.channels_last)
-    else:
-        # initializing the dataset/dataloader for CNN models
-        dataset = datasets.init_chess_dataset(color, False)
-        train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
 
     # Printing info
     print(f'Resuming training at epoch {last_epoch}!')
@@ -335,30 +446,39 @@ def train_chess_model() -> None:
     # Train the network for the set epoch size
     for epoch in range(epochs):
         print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
-        if model.recurrent is True:
+        if hasattr(model, 'recurrent'):
+            if model.recurrent is True:
+                if epoch % same_sample_iters == 0 and epoch != 0:
+                    # switching up the loaded samples
+                    dataset.__sample__()
+                train_rnn(dataset, model, criterion, optimizer, device)
+            else:
+                train_cnn(train_dataloader, model, criterion, optimizer, device)
+        else:
             if epoch % same_sample_iters == 0 and epoch != 0:
                 # switching up the loaded samples
                 dataset.__sample__()
-            train_rnn(dataset, model, criterion, optimizer, device)
-        else:
-            train_cnn(train_dataloader, model, criterion, optimizer, device)
+            train_lstm(dataset, criterion, model, optimizer, device)
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
             save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)
+            pass
 
     # saving the model after it finished training
     # save_trained_model(color, model, last_epoch + epochs, optimizer, path)
 
     # testing the model after all epochs
-    if model.recurrent is True:
-        # test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
-        test_rnn(dataset, model, device)
-        pass
+    if hasattr(model, 'recurrent'):
+        if model.recurrent is True:
+            # test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
+            test_rnn(dataset, model, device)
+            pass
+        else:
+            test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
+            test_cnn(test_dataloader, model, device)
     else:
-        test_dataloader = DataLoader(dataset, shuffle=False, num_workers=8)
-        test_cnn(test_dataloader, model, device)
-
+        test_lstm(dataset, model, device)
     print("Done!")
 
 

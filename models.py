@@ -1,8 +1,13 @@
+import chess
 import numpy as np
 import torch
 from torch import nn
 from torch import jit
 import torch.nn.functional as F
+
+import datasets
+
+CURRENT_DEVICE = 'cpu'
 
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
@@ -76,18 +81,56 @@ class NeuralNetwork(nn.Module):
         return x
 
 
-def init_neural_network(outputs: int, topology: list[nn.Sequential] = None):
+class LSTM(nn.Module):
+    def __init__(self, layer_dim, output_dim):
+        super(LSTM, self).__init__()
+        self.layer_dim = layer_dim
+        self.hidden_dim = 576
+        self.conv1 = nn.Conv2d(12, 32, 5)
+        self.conv2 = nn.Conv2d(32, 64, 4)
+        # lstm1, lstm2, linear
+        self.lstm = nn.LSTM(64, self.hidden_dim, layer_dim, batch_first=True)
+        self.fc = nn.Linear(576, 1152)
+        self.out = nn.Linear(1152, output_dim)
+
+    def forward(self, x, h0=None, c0=None):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        # turning dim to [batch, data]
+        x = torch.flatten(x, 1)
+        x = torch.squeeze(x, 1)
+        x = torch.unsqueeze(x, 0)
+        if h0 is None or c0 is None:
+            h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim, dtype=torch.float32).to(x.device)
+            c0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim, dtype=torch.float32).to(x.device)
+        x = torch.squeeze(x, 1)
+        x = torch.unsqueeze(x, 0)
+
+        # Forward pass
+        out, (hn, cn) = self.lstm(x, (h0, c0))
+        out = F.relu(self.fc(out[:, -1, :]))  # selecting the last output
+        out = F.relu(self.out(out))
+
+        return out, hn, cn
+
+
+def init_neural_network(outputs: int, topology=None):
     """
     Initialising a Neural Network using a specified topology / Sequential.
     :param outputs: number of outputs for the last layer
     :param topology: if provided the specified topology will be initialised
     """
 
+    if isinstance(topology, LSTM):
+        return LSTM(1, datasets.get_output_length(chess.BLACK))
     if topology is not None:
         fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
         return NeuralNetwork(topology[0], topology[1], fc_out)
 
     topology = get_current_topology()
+
+    if isinstance(topology, LSTM):
+        return LSTM(1, datasets.get_output_length(chess.BLACK))
 
     fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
 
@@ -117,7 +160,7 @@ def get_current_topology():
         "Pooling Dropout Softmax": POOLING_DROPOUT,
         "Recurrent convolutional network": RECURRENT_CONV,
         "Recurrent convolutional network (smaller fc)": MINI_RECURRENT,
-        "LSTM convolutional network": LSTM_CONV,
+        "LSTM convolutional network": LSTM(1, 1),
     }
     invalid = True
     while invalid is True:
