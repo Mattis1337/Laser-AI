@@ -355,18 +355,33 @@ def test_lstm(dataset, model, device):
                 print(f"Skipping malformed data: {input_sequence.size()} (dimension)")
                 continue
 
-            output = model(input_sequence.to(device))
-            output = torch.squeeze(output, 0)
+            # to address the vanishing gradient problem we separate the data into chunks of a max size of MAX_SEQ_LEN
+            chunks = int(np.ceil(input_sequence.size(0) / MAX_SEQ_LEN))
+            chunked_input = []
+            chunked_targets = []
+            for c in range(chunks):
+                if c == chunks - 1:
+                    chunked_input.append(input_sequence[c * MAX_SEQ_LEN:, :, :, :])
+                    chunked_targets.append(target_sequence[c * MAX_SEQ_LEN:, :])
+                chunked_input.append(input_sequence[c * MAX_SEQ_LEN:(c + 1) * MAX_SEQ_LEN, :, :, :])
+                chunked_targets.append(target_sequence[c * MAX_SEQ_LEN:(c + 1) * MAX_SEQ_LEN, :])
 
-            for pred_idx in range(len(output)):
-                # getting the highest match of the AI output
-                pred = dt.get_highest_index(output[pred_idx], 1)
-                target = dt.get_highest_index(target_sequence[pred_idx], 1)
-                n_total += 1
+            for chunk_idx in range(chunks):
+                input_sequence = chunked_input[chunk_idx]
+                target_sequence = chunked_targets[chunk_idx]
 
-                # comparing if the AI's match is the same as the output
-                if int(target[0]) == int(pred[0]):
-                    total += 1
+                output = model(input_sequence.to(device))
+                output = torch.squeeze(output, 0)
+
+                for pred_idx in range(len(output)):
+                    # getting the highest match of the AI output
+                    pred = dt.get_highest_index(output[pred_idx], 1)
+                    target = dt.get_highest_index(target_sequence[pred_idx], 1)
+                    n_total += 1
+
+                    # comparing if the AI's match is the same as the output
+                    if int(target[0]) == int(pred[0]):
+                        total += 1
 
             if (batch+1) % 1000 == 0:
                 print(f'Successfully tested {n_total} randomly shuffled game states ({batch+1} games)!')
@@ -490,7 +505,7 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
-            save_trained_model(color, model, last_epoch, optimizer, path)  # + epoch + 1
+            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)
             pass
 
     # saving the model after it finished training
