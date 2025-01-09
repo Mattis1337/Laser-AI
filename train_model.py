@@ -4,9 +4,7 @@ import chess
 import chess as c
 import numpy as np
 import torch
-from numpy.ma.core import squeeze
 from requests.packages import target
-from sympy.codegen.ast import continue_
 from torch import nn
 from torch.utils.data import DataLoader
 from random import shuffle
@@ -56,7 +54,7 @@ def init_new_model():
         else:
             optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     # entering new path to save the model to
     path = input('Insert name for the new model state (.pth will be appended!): ')
@@ -165,6 +163,31 @@ def train_rnn(dataset, model, criterion, optimizer, device):
             running_loss = 0
             total_states = 0
 
+# other approach
+# loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
+#        past_inputs = []
+#        for seq_idx in range(input_sequence.size(0)):
+#            past_inputs.append(input_sequence[seq_idx])
+#            if len(past_inputs) > MAX_SEQ_LEN:
+#                past_inputs.pop(0)
+#           inputs = torch.stack(past_inputs)
+#            print(inputs.size())
+#            total_states += 1
+#            output = model(inputs.to(device))
+#            l = criterion(output.to(device), torch.unsqueeze(target_sequence[seq_idx], 0).to(device))
+#            loss += l
+#
+#            # if the loss is scalar it can not be handled by the back propagation
+#            if loss.requires_grad is not False:
+#                loss.backward()
+#               optimizer.step()
+#            else:
+#               print("passing")
+#            running_loss += loss
+
+
+MAX_SEQ_LEN = 16
+
 
 def train_lstm(dataset, criterion, model, optimizer, device):
     """Training an lstm"""
@@ -178,35 +201,45 @@ def train_lstm(dataset, criterion, model, optimizer, device):
 
     for batch, idx in enumerate(order):
         input_sequence, target_sequence = dataset.__getitem__(idx)
-        input_sequence.unsqueeze(-1)
+        # input_sequence = torch.zeros([42, 12, 8, 8])
+        # target_sequence = torch.zeros([42, 1863])
+
         if input_sequence.size(0) == 0:
             continue
 
-        optimizer.zero_grad(set_to_none=True)
+        # to address the vanishing gradient problem we separate the data into chunks of a max size of MAX_SEQ_LEN
+        chunks = int(np.ceil(input_sequence.size(0) / MAX_SEQ_LEN))
+        chunked_input = []
+        chunked_targets = []
+        for c in range(chunks):
+            if c == chunks-1:
+                chunked_input.append(input_sequence[c*MAX_SEQ_LEN:, :, :, :])
+                chunked_targets.append(target_sequence[c*MAX_SEQ_LEN:, :])
+            chunked_input.append(input_sequence[c*MAX_SEQ_LEN:(c+1)*MAX_SEQ_LEN, :, :, :])
+            chunked_targets.append(target_sequence[c*MAX_SEQ_LEN:(c+1)*MAX_SEQ_LEN, :])
 
-        loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
-        h0, c0 = None, None
+        for chunk_idx in range(chunks):
+            input_sequence = chunked_input[chunk_idx]
+            target_sequence = chunked_targets[chunk_idx]
+            target_sequence = torch.unsqueeze(target_sequence, 0)
+            optimizer.zero_grad(set_to_none=True)
 
-        input_sequence.squeeze(1)
-        # iterating through all previous moves
-        for i in range(input_sequence.size(0)):
-            target = torch.unsqueeze(target_sequence[i], 0)
+            loss = torch.Tensor([0])  # you can also just simply use ``loss = 0``
+
             total_states += 1
-            output, h0, c0 = model(input_sequence[i].to(device), h0, c0)
-            l = criterion(output.to(device), target.to(device))
+            output = model(input_sequence.to(device))
+
+            l = criterion(output.to(device), target_sequence.to(device))
             loss += l
 
-        # if the loss is scalar it can not be handled by the back propagation
-        if loss.requires_grad is not False:
-            loss.backward()
-            optimizer.step()
-        else:
-            print("passing")
-        running_loss += loss
+            # if the loss is scalar it can not be handled by the back propagation
+            if loss.requires_grad is not False:
+                loss.backward()
+                optimizer.step()
+            else:
+                print("passing")
 
-        # Detach hidden and cell states to prevent backpropagation through the entire sequence
-        h0.detach()
-        c0.detach()
+            running_loss += loss
 
         if batch % 1000 == 0:
             print(f"average loss: {running_loss/total_states}  [{batch:>5d}/{len(dataset):>5d}]")
@@ -321,18 +354,14 @@ def test_lstm(dataset, model, device):
             if input_sequence.size(0) == 0:
                 print(f"Skipping malformed data: {input_sequence.size()} (dimension)")
                 continue
-            # getting rid of the batch dimension which effectively is 1 all the time
-            input_sequence.unsqueeze(-1)
 
-            # calculate outputs by running game states through the network
-            for seq_idx in range(len(input_sequence)):
-                output, _, _ = model(input_sequence[seq_idx].to(device))
+            output = model(input_sequence.to(device))
+            output = torch.squeeze(output, 0)
 
-                output = torch.squeeze(output, 0)
-
+            for pred_idx in range(len(output)):
                 # getting the highest match of the AI output
-                pred = dt.get_highest_index(output, 1)
-                target = dt.get_highest_index(target_sequence[seq_idx], 1)
+                pred = dt.get_highest_index(output[pred_idx], 1)
+                target = dt.get_highest_index(target_sequence[pred_idx], 1)
                 n_total += 1
 
                 # comparing if the AI's match is the same as the output
@@ -392,7 +421,7 @@ def train_chess_model() -> None:
         else:
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
@@ -405,7 +434,6 @@ def train_chess_model() -> None:
             model.out_fc = nn.Linear(num_ftrs, datasets.get_output_length(color))
         else:
             num_ftrs = model.fc3.in_features
-            output_layer = model.fc3
             model.fc3 = nn.Linear(num_ftrs, old_outputs)
             # loading the pre-trained model with the old outputs
             model.load_state_dict(state['model_state_dict'], strict=False)
@@ -462,7 +490,7 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
-            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)
+            save_trained_model(color, model, last_epoch, optimizer, path)  # + epoch + 1
             pass
 
     # saving the model after it finished training
@@ -479,7 +507,11 @@ def train_chess_model() -> None:
             test_cnn(test_dataloader, model, device)
     else:
         test_lstm(dataset, model, device)
+        pass
     print("Done!")
+
+
+SEQUENCED_INPUT = []
 
 
 def generate_move(color, fen, amount_outputs=1):
@@ -492,7 +524,8 @@ def generate_move(color, fen, amount_outputs=1):
     """
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
-    state, path = load_model('recurrent_conv_black.pth')
+
+    state, path = load_model('lstm_test_black.pth')
     model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
@@ -507,6 +540,12 @@ def generate_move(color, fen, amount_outputs=1):
     x_[0] = x
     # turning the array into tensor
     x = dt.to_tensor(x_)
+    if SEQUENCED_INPUT is None:
+        SEQUENCED_INPUT.append(torch.squeeze(x, 0))
+    else:
+        x = torch.squeeze(x, 0)
+        SEQUENCED_INPUT.append(x)
+        x = torch.stack(SEQUENCED_INPUT)
 
     outputs: dict[str, int]
     match color:
@@ -518,7 +557,8 @@ def generate_move(color, fen, amount_outputs=1):
             raise ValueError("Expected variable color to be of type bool but received" + type(color))
 
     with torch.no_grad():
-        pred, _ = model(x)
+        pred = model(x)
+        pred = [pred[-1]]
         pred = dt.tensor_to_targets(pred,
                                     outputs,
                                     amount_outputs)

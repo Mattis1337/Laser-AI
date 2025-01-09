@@ -94,24 +94,28 @@ class LSTM(nn.Module):
         self.out = nn.Linear(1152, output_dim)
 
     def forward(self, x, h0=None, c0=None):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        # turning dim to [batch, data]
-        x = torch.flatten(x, 1)
-        x = torch.squeeze(x, 1)
-        x = torch.unsqueeze(x, 0)
+        conv_out = []
+        for i in range(x.size(0)):
+            state = x[i, :, :, :]
+            out = F.relu(self.conv1(state))
+            out = F.relu(self.conv2(out))
+            out = torch.flatten(out, 1)
+            out = torch.squeeze(out, 1)
+            conv_out.append(out)
+
+        conv_out = torch.stack(conv_out)  # Shape: (batch_size, sequence_length, features)
+        conv_out = torch.unsqueeze(conv_out, 0)
         if h0 is None or c0 is None:
-            h0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim, dtype=torch.float32).to(x.device)
-            c0 = torch.zeros(self.layer_dim, x.size(0), self.hidden_dim, dtype=torch.float32).to(x.device)
-        x = torch.squeeze(x, 1)
-        x = torch.unsqueeze(x, 0)
+            h0 = torch.zeros(self.layer_dim, 1, self.hidden_dim, dtype=torch.float32).to(x.device)
+            c0 = torch.zeros(self.layer_dim, 1, self.hidden_dim, dtype=torch.float32).to(x.device)
 
         # Forward pass
-        out, (hn, cn) = self.lstm(x, (h0, c0))
-        out = F.relu(self.fc(out[:, -1, :]))  # selecting the last output
-        out = F.relu(self.out(out))
+        out, (hn, cn) = self.lstm(conv_out, (h0, c0))
+        # pass last hidden state for classification
+        out = F.relu(self.fc(out))  # selecting the last output
+        out = self.out(out)
 
-        return out, hn, cn
+        return out
 
 
 def init_neural_network(outputs: int, topology=None):
@@ -130,7 +134,7 @@ def init_neural_network(outputs: int, topology=None):
     topology = get_current_topology()
 
     if isinstance(topology, LSTM):
-        return LSTM(1, datasets.get_output_length(chess.BLACK))
+        return LSTM(2, datasets.get_output_length(chess.BLACK))
 
     fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
 
