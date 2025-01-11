@@ -85,13 +85,13 @@ class LSTM(nn.Module):
     def __init__(self, layer_dim, output_dim):
         super(LSTM, self).__init__()
         self.layer_dim = layer_dim
-        self.hidden_dim = 576
+        self.hidden_dim = 256
         self.conv1 = nn.Conv2d(12, 32, 5)
         self.conv2 = nn.Conv2d(32, 64, 4)
         # lstm1, lstm2, linear
         self.lstm = nn.LSTM(64, self.hidden_dim, layer_dim, batch_first=True)
-        self.fc = nn.Linear(576, 1152)
-        self.out = nn.Linear(1152, output_dim)
+        self.fc = nn.Linear(self.hidden_dim, 1024)
+        self.out = nn.Linear(1024, output_dim)
 
     def forward(self, x, h0=None, c0=None):
         conv_out = []
@@ -134,7 +134,7 @@ def init_neural_network(outputs: int, topology=None):
     topology = get_current_topology()
 
     if isinstance(topology, LSTM):
-        return LSTM(2, datasets.get_output_length(chess.BLACK))
+        return LSTM(1, datasets.get_output_length(chess.BLACK))
 
     fc_out = nn.Linear(get_output_shape(topology[1], get_output_shape(topology[0], [12, 8, 8])[0])[0], outputs)
 

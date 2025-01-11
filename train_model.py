@@ -436,7 +436,7 @@ def train_chess_model() -> None:
         else:
             optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
     else:
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate*0.1)
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
@@ -505,7 +505,7 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
-            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)
+            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
             pass
 
     # saving the model after it finished training
@@ -540,7 +540,7 @@ def generate_move(color, fen, amount_outputs=1):
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
 
-    state, path = load_model('lstm_test_black.pth')
+    state, path = load_model('nopool_nopad_black.pth')
     model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
@@ -555,12 +555,21 @@ def generate_move(color, fen, amount_outputs=1):
     x_[0] = x
     # turning the array into tensor
     x = dt.to_tensor(x_)
-    if SEQUENCED_INPUT is None:
-        SEQUENCED_INPUT.append(torch.squeeze(x, 0))
+    if hasattr(model, 'recurrent'):
+        if model.recurrent is True:
+            if SEQUENCED_INPUT is None:
+                SEQUENCED_INPUT.append(torch.squeeze(x, 0))
+            else:
+                x = torch.squeeze(x, 0)
+                SEQUENCED_INPUT.append(x)
+                x = torch.stack(SEQUENCED_INPUT)
     else:
-        x = torch.squeeze(x, 0)
-        SEQUENCED_INPUT.append(x)
-        x = torch.stack(SEQUENCED_INPUT)
+        if SEQUENCED_INPUT is None:
+            SEQUENCED_INPUT.append(torch.squeeze(x, 0))
+        else:
+            x = torch.squeeze(x, 0)
+            SEQUENCED_INPUT.append(x)
+            x = torch.stack(SEQUENCED_INPUT)
 
     outputs: dict[str, int]
     match color:
