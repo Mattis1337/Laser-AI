@@ -541,7 +541,7 @@ def generate_move(color, fen, amount_outputs=None):
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
     if color is chess.WHITE:
-        state, path = load_model('white_cnn.pth')
+        state, path = load_model('nopool_nopad_white.pth')
     elif color is chess.BLACK:
         state, path = load_model('nopool_nopad_black.pth')
     else:
