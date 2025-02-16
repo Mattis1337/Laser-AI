@@ -1,7 +1,8 @@
 # Project specific
-Logs
-Games
-CSV
+Logs/
+Games/
+CSV/
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

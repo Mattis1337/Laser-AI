@@ -2,6 +2,7 @@ import os.path
 
 import chess
 import chess as c
+from chess.engine import PlayResult
 import numpy as np
 import torch
 from requests.packages import target
@@ -529,7 +530,7 @@ def train_chess_model() -> None:
 SEQUENCED_INPUT = []
 
 
-def generate_move(color, fen, amount_outputs=1):
+def generate_move(color, fen, amount_outputs=None):
     """
     When using the AI this function will return the move for a given
     game state.
@@ -545,6 +546,9 @@ def generate_move(color, fen, amount_outputs=1):
         state, path = load_model('nopool_nopad_black.pth')
     else:
         raise ValueError(type(color) + " is not of type " + type(bool))
+
+    if amount_outputs is None:
+        amount_outputs = datasets.get_output_length(color)
     model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()

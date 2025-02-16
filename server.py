@@ -88,7 +88,7 @@ def predict_move(fen: str, depth: int = 5):
     # Get first legal move of outputs
     for ai_move in ai_moves:
         try:
-            move = board.parse_san(ai_move)
+            move = board.parse_uci(ai_move)
         except ValueError:
             continue
         if board.is_legal(move):
