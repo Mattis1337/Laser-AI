@@ -7,8 +7,6 @@ import torch.nn.functional as F
 
 import datasets
 
-CURRENT_DEVICE = 'cpu'
-
 
 # https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html
 # Neural Network class

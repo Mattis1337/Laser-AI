@@ -434,7 +434,7 @@ def train_chess_model() -> None:
         if model.recurrent is True:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         else:
-            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.1, momentum=0.9)
+            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.01, momentum=0.9)
     else:
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate*0.1)
     # checking if the output size has changed in between learning
@@ -539,8 +539,12 @@ def generate_move(color, fen, amount_outputs=1):
     """
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
-
-    state, path = load_model('nopool_nopad_black.pth')
+    if color is chess.WHITE:
+        state, path = load_model('white_cnn.pth')
+    elif color is chess.BLACK:
+        state, path = load_model('nopool_nopad_black.pth')
+    else:
+        raise ValueError(type(color) + " is not of type " + type(bool))
     model = models.init_neural_network(state['output_size'], models.NOPOOL_BIGFC_LAYER)
     model.load_state_dict(state['model_state_dict'], strict=False)
     model.eval()
