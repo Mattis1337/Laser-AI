@@ -11,7 +11,7 @@
     devShells.x86_64-linux.default = pkgs.mkShell {
 
       packages = [
-        (pkgs.python3.withPackages(p: with p; [
+        (pkgs.python313.withPackages(p: with p; [
           numpy
           chess
           torch
