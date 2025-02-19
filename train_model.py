@@ -2,10 +2,8 @@ import os.path
 
 import chess
 import chess as c
-from chess.engine import PlayResult
 import numpy as np
 import torch
-from requests.packages import target
 from torch import nn
 from torch.utils.data import DataLoader
 from random import shuffle
@@ -541,7 +539,7 @@ def generate_move(color, fen, amount_outputs=None):
     # TODO: add mechanism for server to flexibly choose model/ and reuse same rnn model
     # loading the model
     if color is chess.WHITE:
-        state, path = load_model('nopool_nopad_white.pth')
+        state, path = load_model('white_cnn.pth')
     elif color is chess.BLACK:
         state, path = load_model('nopool_nopad_black.pth')
     else:
@@ -595,7 +593,7 @@ def generate_move(color, fen, amount_outputs=None):
                                     outputs,
                                     amount_outputs)
 
-        print(f'Predicted: "{pred}"')
+        # print(f'Predicted: "{pred}"')
 
     return pred
 
