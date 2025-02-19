@@ -628,7 +628,7 @@ def load_model(path=None):
     else:
         path = path
 
-    state = torch.load('models/'+path)
+    state = torch.load('models/'+path, weights_only=True)
 
     return state, path
 
