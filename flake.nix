@@ -8,8 +8,8 @@
   outputs = { self, nixpkgs, ... }: let
     pkgs = import nixpkgs {
       system = "x86_64-linux";
-      config.allowUnfree = true;
-      config.cudaSupport = true;
+      #config.allowUnfree = true;
+      #config.cudaSupport = true;
     };
   in {
     devShells.x86_64-linux.default = pkgs.mkShell {
