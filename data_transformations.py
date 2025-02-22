@@ -65,7 +65,7 @@ def transform_bitboards(bitboards):
     return byteboard
 
 
-def targets_to_numericals(color) -> dict:
+def targets_to_numericals(color) -> list:
     """
     Decodes every move in a file by taking its index and returning it with a dict.
     :param color: which set of moves should be decoded
@@ -75,40 +75,33 @@ def targets_to_numericals(color) -> dict:
     if type(color) is not bool:
         raise ValueError(f"Expected type {chess.COLORS} but received type {type(color)}")
     if color is True:
-        targets = pd.read_csv(WHITE_MOVES_CSV, usecols=[0])
+        targets = pd.read_csv(WHITE_MOVES_CSV, usecols=[0], header=0)
     if color is False:
-        targets = pd.read_csv(BLACK_MOVES_CSV, usecols=[0])
+        targets = pd.read_csv(BLACK_MOVES_CSV, usecols=[0], header=0)
 
-    target_tensor_dict = {}
+    # getting the column values by taking the name of the first column as the key
+    targets = targets[targets.columns[0]]
+    targets.to_list()
 
-    targets = targets.to_numpy()
-
-    for i, target in enumerate(targets):
-        target = target[0]
-        # adding the target tensor with the key of the fitting move
-        target_tensor_dict[target] = i
-
-    return target_tensor_dict
+    return targets
 
 
-def tensor_to_targets(tensor: torch.Tensor, targets: dict, amount_targets=1):
+def tensor_to_targets(tensor: torch.Tensor, targets: list, amount_targets=1) -> list[str]:
     """
     Return the fitting tensor (for further calculations) or the fitting notation (for generating moves)
     to a given tensor based off a given dictionary.
     :param tensor: input tensor with non integer values
-    :param targets: a dictionary created by targets_to_numericals containing fitting notation to a possible target tensor
+    :param targets: a dictionary created by targets_to_numericals containing a list of all UCI moves
     :param amount_targets: how big the amount of highest ranking annotations should be
     """
 
     # getting the highest index / indices of a given output tensor
-    match = get_highest_index(tensor[0], amount_targets)[-amount_targets:]
+    match = get_highest_index(tensor, amount_targets)[-amount_targets:]
 
     annotations = []
     # returns all fitting annotations to the tensors
     for i in range(amount_targets):
-        for key, value in targets.items():
-            if value == match[i]:
-                annotations.append(key)
+        annotations.append(targets[match[i]])
 
     return annotations
 

@@ -14,8 +14,8 @@ import datasets
 import data_transformations as dt
 import models
 
-OUTPUTS_WHITE: dict[str, int] = dt.targets_to_numericals(c.WHITE)
-OUTPUTS_BLACK: dict[str, int] = dt.targets_to_numericals(c.BLACK)
+OUTPUTS_WHITE: list[str] = dt.targets_to_numericals(c.WHITE)
+OUTPUTS_BLACK: list[str] = dt.targets_to_numericals(c.BLACK)
 
 
 def init_new_model():
@@ -577,7 +577,7 @@ def generate_move(color, fen, amount_outputs=None):
             SEQUENCED_INPUT.append(x)
             x = torch.stack(SEQUENCED_INPUT)
 
-    outputs: dict[str, int]
+    outputs: list[str]
     match color:
         case c.WHITE:
             outputs = OUTPUTS_WHITE
@@ -589,7 +589,7 @@ def generate_move(color, fen, amount_outputs=None):
     with torch.no_grad():
         pred = model(x)
         pred = [pred[-1]]
-        pred = dt.tensor_to_targets(pred,
+        pred = dt.tensor_to_targets(pred[0],
                                     outputs,
                                     amount_outputs)
 
