@@ -7,6 +7,7 @@
 #
 
 import pathlib
+import sys
 import requests
 import logging
 
@@ -35,10 +36,23 @@ json_header = {
 
 # Destination file for the player list
 destination = "./rockyou.txt"
-pathlib.Path(destination).touch()
+try:
+    pathlib.Path(destination).parent.mkdir(parents=True, exist_ok=True)
+    pathlib.Path(destination).touch()
+except OSError as error:
+    logging.error(f"Couldn't create the destination file at: {destination}", exc_info=True)
+    sys.exit()
 
 
-def get_titled_players(title: str): 
+def get_titled_players(title: str) -> list[str]:
+    """Fetch the Chess.com names of players with a specific title
+
+    Args:
+        title (str): The title to filter for
+
+    Returns:
+        list[str]: The player names with the title
+    """
     url = f"{endpoint}/{title}"
     
     try:
@@ -60,9 +74,9 @@ def main():
                     try:
                         file.write(player + "\n")
                     except OSError as exception:
-                        logging.error(f"Couldn't write '{player}' to {destination}!")
+                        logging.error(f"Couldn't write '{player}' to {destination}!", exc_info=True)
     except OSError as esception:
-        logging.error(f"Couldn't open {destination}!")
+        logging.error(f"Couldn't open {destination}!", exc_info=True)
 
 
 if __name__ == "__main__":
