@@ -6,7 +6,11 @@
   };
 
   outputs = { self, nixpkgs, ... }: let
-    pkgs = nixpkgs.legacyPackages."x86_64-linux";
+    pkgs = import nixpkgs {
+      system = "x86_64-linux";
+      config.allowUnfree = true;
+      config.cudaSupport = true;
+    };
   in {
     devShells.x86_64-linux.default = pkgs.mkShell {
 
