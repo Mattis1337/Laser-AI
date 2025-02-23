@@ -96,7 +96,7 @@ def tensor_to_targets(tensor: torch.Tensor, targets: list, amount_targets=1) -> 
     """
 
     # getting the highest index / indices of a given output tensor
-    match = get_highest_index(tensor, amount_targets)[-amount_targets:]
+    match = get_highest_indices(tensor)
 
     annotations = []
     # returns all fitting annotations to the tensors
@@ -106,23 +106,12 @@ def tensor_to_targets(tensor: torch.Tensor, targets: list, amount_targets=1) -> 
     return annotations
 
 
-def get_highest_index(iterable, amount_targets: int) -> list[int]:
+def get_highest_indices(iterable) -> [int]:
     """
-    Returns the index of the highest value of a given iterable.
+    Returns the indices of the highest values of a given iterable.
     :param iterable: object which should be inspected (e.g. tensor, array, list)
-    :param amount_targets: how long the list of highest indices should be
     """
-    sorted_idx = []
-    for i, val in enumerate(iterable):
-        if len(sorted_idx) < amount_targets:
-            sorted_idx.append(i)
-        for j in range(len(sorted_idx)):
-            if iterable[sorted_idx[j]] <= val:
-                sorted_idx.insert(j, i)
-                break
-        if len(sorted_idx) > amount_targets:
-            sorted_idx.pop(-1)
-    return sorted_idx
+    return np.argsort(iterable).tolist()[::-1]
 
 
 def create_targets_by_index(index, size):
