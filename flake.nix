@@ -15,10 +15,25 @@
     devShells.${system}.default = pkgs.mkShell {
 
       packages = [
-        (pkgs.python312.withPackages(p: with p; [
+        (pkgs.python313.withPackages(p: with p; [
           numpy
           chess
-          torch-bin
+          torch
+          pandas
+          requests
+          fastapi
+          fastapi-cli
+        ]))
+      ];
+
+    };
+    devShells.${system}.cuda = pkgs.mkShell {
+
+      packages = [
+        (pkgs.python313.withPackages(p: with p; [
+          numpy
+          chess
+          torch-bin  # precompiled PyTorch with CUDA support
           pandas
           requests
           fastapi
