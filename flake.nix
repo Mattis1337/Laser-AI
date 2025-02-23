@@ -22,6 +22,7 @@
           pandas
           requests
           fastapi
+          fastapi-cli
         ]))
       ];
 
