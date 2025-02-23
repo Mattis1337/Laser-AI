@@ -12,35 +12,37 @@
       config.allowUnfree = true;
     };
   in {
-    devShells.${system}.default = pkgs.mkShell {
+    devShells.${system} = {
+      default = pkgs.mkShell {
 
-      packages = [
-        (pkgs.python313.withPackages(p: with p; [
-          numpy
-          chess
-          torch
-          pandas
-          requests
-          fastapi
-          fastapi-cli
-        ]))
-      ];
+        packages = [
+          (pkgs.python312.withPackages(p: with p; [
+            numpy
+            chess
+            torch
+            pandas
+            requests
+            fastapi
+            fastapi-cli
+          ]))
+        ];
 
-    };
-    devShells.${system}.cuda = pkgs.mkShell {
+      };
+      cuda = pkgs.mkShell {
 
-      packages = [
-        (pkgs.python313.withPackages(p: with p; [
-          numpy
-          chess
-          torch-bin  # precompiled PyTorch with CUDA support
-          pandas
-          requests
-          fastapi
-          fastapi-cli
-        ]))
-      ];
+        packages = [
+          (pkgs.python312.withPackages(p: with p; [
+            numpy
+            chess
+            torch-bin  # precompiled PyTorch with CUDA support
+            pandas
+            requests
+            fastapi
+            fastapi-cli
+          ]))
+        ];
 
+      };
     };
   };
 }
