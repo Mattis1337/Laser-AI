@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from random import shuffle
-
+import time
 # importing own files
 import chess_annotation
 import datasets
@@ -266,10 +266,11 @@ def test_cnn(dataloader, model, device):
             # calculate outputs by running game states through the network
             pred = model(image.to(device))
             # getting the highest match of the AI output
-            pred = dt.get_highest_index(pred[0], 1)
-
+            pred = dt.get_highest_indices(pred[0])[0]
+            label = dt.get_highest_indices(label[0])[0]
+            
             # comparing if the AI's match is the same as the output
-            if int(label[0]) == int(pred[0]):
+            if label == pred:
                 total += 1
 
             if (i+1) % 10000 == 0:
@@ -312,8 +313,8 @@ def test_rnn(dataset, model, device):
                 output = model(input_sequence[seq_idx].to(device))
 
                 # getting the highest match of the AI output
-                pred = dt.get_highest_index(output, 1)
-                target = dt.get_highest_index(target_sequence[seq_idx], 1)
+                pred = dt.get_highest_indices(output)[0]
+                target = dt.get_highest_indices(target_sequence[seq_idx])[0]
                 n_total += 1
 
                 # comparing if the AI's match is the same as the output
@@ -374,8 +375,8 @@ def test_lstm(dataset, model, device):
 
                 for pred_idx in range(len(output)):
                     # getting the highest match of the AI output
-                    pred = dt.get_highest_index(output[pred_idx], 1)
-                    target = dt.get_highest_index(target_sequence[pred_idx], 1)
+                    pred = dt.get_highest_indices(output[pred_idx])[0]
+                    target = dt.get_highest_indices(target_sequence[pred_idx])[0]
                     n_total += 1
 
                     # comparing if the AI's match is the same as the output
@@ -471,7 +472,7 @@ def train_chess_model() -> None:
         else:
             # initializing the dataset/dataloader for CNN models
             dataset = datasets.init_chess_dataset(color, False)
-            train_dataloader = DataLoader(dataset, batch_size=64, shuffle=True, num_workers=8)
+            train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
     else:
         criterion = nn.CrossEntropyLoss()
         # initializing RNN dataset
@@ -484,6 +485,8 @@ def train_chess_model() -> None:
 
     # amount of iterations after which a new random sampled dataset should be created
     same_sample_iters = 5
+
+    print(time.ctime())
 
     # Train the network for the set epoch size
     for epoch in range(epochs):
@@ -506,6 +509,8 @@ def train_chess_model() -> None:
             # saving the model after every epoch
             save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
             pass
+
+    print(time.ctime())
 
     # saving the model after it finished training
     # save_trained_model(color, model, last_epoch + epochs, optimizer, path)

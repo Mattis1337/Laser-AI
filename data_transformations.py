@@ -111,7 +111,7 @@ def get_highest_indices(iterable) -> [int]:
     Returns the indices of the highest values of a given iterable.
     :param iterable: object which should be inspected (e.g. tensor, array, list)
     """
-    return np.argsort(iterable).tolist()[::-1]
+    return np.argsort(torch.Tensor.cpu(iterable)).tolist()[::-1]
 
 
 def create_targets_by_index(index, size):

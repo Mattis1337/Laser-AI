@@ -79,6 +79,8 @@ def main():
     Command Line User Interface
     """
 
+    print_banner()
+
     while True:
         print('1) Start AI client' + '\n' +
               '2) Train AI locally' + '\n' +
