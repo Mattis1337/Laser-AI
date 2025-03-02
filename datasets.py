@@ -25,7 +25,11 @@ class ChessDataset(Dataset):
         self.rnn = rnn
         self.color = color
         self.transform = transform
-        self.targets_transformed = dt.targets_to_numericals(color)
+        self.targets_transformed = {}
+        targets = dt.targets_to_numericals(color)
+        for i in range(len(targets)):
+            self.targets_transformed[targets[i]] = i
+
         self.transformed_labels = []
         self.transformed_games = []
 
@@ -61,7 +65,9 @@ class ChessDataset(Dataset):
 
         # getting the transformed target of the label
         if label in self.targets_transformed:
-            target = self.targets_transformed[label]
+            target_idx = self.targets_transformed[label]
+            target = torch.zeros([len(self.targets_transformed)])
+            target[target_idx] = 1
         else:
             raise ValueError(f"Target for label not found in targets_transformed: {label} (label)!",
                              "Update file containing all moves!")
