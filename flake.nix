@@ -24,6 +24,7 @@
             requests
             fastapi
             fastapi-cli
+            pyyaml
           ]))
         ];
 
@@ -39,6 +40,7 @@
             requests
             fastapi
             fastapi-cli
+            pyyaml
           ]))
         ];
 
