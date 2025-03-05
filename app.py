@@ -8,7 +8,6 @@ After that some info is printed to STDOUT and lastly the game starts.
 # import numpy as np
 import argparse
 import chess
-import torch
 
 # importing own files
 import train_model
@@ -79,6 +78,8 @@ def main():
     """
     Command Line User Interface
     """
+
+    print_banner()
 
     while True:
         print('1) Start AI client' + '\n' +

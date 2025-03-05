@@ -26,6 +26,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
 )
 
+
 def get_games_pgn(username: str) -> list[str]:
     """
     Downloads all public games that a Chess.com account has ever played as PGN
@@ -66,13 +67,13 @@ def get_games_pgn(username: str) -> list[str]:
 
             try:
                 # apply game filters here
+                if game["rules"] != "chess":    # other rulesets could mess up AI
+                    continue
+
                 if not game["rated"]:   # casual games
                     continue
 
-                if game["time_class"] == "bullet":  # bullet = 1 minute games
-                    continue
-
-                if game["rules"] != "chess":    # other rulesets could mess up AI
+                if game["time_class"] == "bullet":  # bullet: < 3 minute games
                     continue
 
                 filtered_games.append(game["pgn"])
@@ -105,7 +106,7 @@ def save_game(unix_time: int, user_name: str, save_number: int, game_pgn: str) -
         with open(file_path, "w") as file:
             file.write(game_pgn)
 
-    except (IOError, OSError) as error:
+    except OSError as error:
         logging.error("An IO error occurred while saving a game!", exc_info=True)
         return
 
@@ -133,7 +134,7 @@ def process_games(player: str, start_time: int) -> int:
         save_game(
             unix_time=start_time,
             user_name=player,
-            save_number=i,
+            save_number=f"{i:05}",
             game_pgn=game
         )
 
@@ -155,7 +156,7 @@ def get_players_from_file(file_path: str) -> list[str]:
         with open(file_path, 'r') as file:
             # remove whitespaces and save strings between them into list
             players = [line.strip() for line in file]
-    except (IOError, OSError) as error:
+    except OSError as error:
         logging.fatal(f"Couldn't read {file_path}!", exc_info=True)
         raise RuntimeError(f"Failed to read file: {file_path}") from error
     return players

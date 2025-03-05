@@ -1,10 +1,13 @@
 import ast
+import csv
+import random
+from random import shuffle
 
 import chess as c
 import pandas as pd
 import numpy as np
 import torch
-from pydantic.experimental.pipeline import transform
+
 from torch.utils.data import Dataset
 
 # Importing own files
@@ -17,14 +20,27 @@ import data_transformations as dt
 
 class ChessDataset(Dataset):
     def __init__(self, img_dir, color, rnn, transform=None):
-        # load the specified chess data from a csv file
+        # load the specified chess data from a csv fill
         self.data, self.labels = prepare_chess_data(img_dir, rnn)
         self.rnn = rnn
         self.color = color
         self.transform = transform
-        self.targets_transformed = dt.targets_to_numericals(color)
+        self.targets_transformed = {}
+        targets = dt.targets_to_numericals(color)
+        for i in range(len(targets)):
+            self.targets_transformed[targets[i]] = i
+
+        self.transformed_labels = []
+        self.transformed_games = []
+
+        if rnn is False:
+            return
+
+        self.__sample__()
 
     def __len__(self) -> int:
+        if self.rnn is True:
+            return len(self.transformed_labels)
         return len(self.labels)
 
     def __color__(self) -> c.COLORS:
@@ -34,47 +50,76 @@ class ChessDataset(Dataset):
         return self.targets_transformed
 
     def __getitem__(self, idx):
+        if self.rnn is True:
+            return self.transformed_games[idx[0]], self.transformed_labels[idx[0]]
+
         label = self.labels[idx]
         label = label[0]
         bitboards = self.data[idx]
-        byteboards = []
-        if self.rnn is True:
-            bitboards = bitboards[0]
-            for game in bitboards:
-                byteboards.append(dt.transform_bitboards(game))
-            # turning the list into a np.array so the transform works
-            byteboards = np.array(byteboards)
-        else:
-            byteboards = dt.transform_bitboards(bitboards)
+
+        byteboards = dt.transform_bitboards(bitboards)
 
         # turning the np.array into a pytorch tensor
         if self.transform:
             byteboards = self.transform(byteboards)
 
-        # if dataset should only return singular game states and not the whole game do that
-        if self.rnn is False:
-            # getting the transformed target of the label
-            if label in self.targets_transformed:
-                target = self.targets_transformed[label]
-            else:
-                raise ValueError(f"Target for label not found in targets_transformed: {label} (label)!",
-                                 "Update file containing all moves!")
+        # getting the transformed target of the label
+        if label in self.targets_transformed:
+            target_idx = self.targets_transformed[label]
+            target = torch.zeros([len(self.targets_transformed)])
+            target[target_idx] = 1
+        else:
+            raise ValueError(f"Target for label not found in targets_transformed: {label} (label)!",
+                             "Update file containing all moves!")
 
-            # return the bitboards and the label as a tensor
-            return byteboards, target
-
-        # if dataset should return a sequence of moves get each one from the hot encoded dict
-        targets = []
-
-        for l in label:
-            # getting the transformed target of the label
-            if l in self.targets_transformed:
-                targets.append(self.targets_transformed[l])
-            else:
-                raise ValueError(f"Target for label not found in targets_transformed: {l} (label)!",
-                                 "Update file containing all moves!")
         # return the bitboards and the label as a tensor
-        return byteboards, targets
+        return byteboards, target
+
+    def __sample__(self, section_len=10_000):
+        # sampling already loaded data
+        sample = random.sample(range(len(self.data)), section_len)
+        s_data = [self.data[x] for x in sample]
+        s_labels = [self.labels[x] for x in sample]
+        self.transformed_games = []
+        self.transformed_labels = []
+
+        # TODO: all of this is way too slow
+        out_length = get_output_length(self.color)
+        for idx in range(len(s_data)):
+            bitboards = s_data[idx]
+            label = s_labels[idx]
+            label = label[0]
+            bitboards = bitboards[0]
+            byteboards = []
+            for game in bitboards:
+                byteboards.append(dt.transform_bitboards(game))
+            # turning the list into a np.array so the transform works
+            byteboards = np.array(byteboards)
+
+            # if dataset should return a sequence of moves get each one from the hot encoded dict
+            targets = np.empty([len(label), out_length])
+            for i, l in enumerate(label):
+                # getting the transformed target of the label
+                if l in self.targets_transformed:
+                    targets[i] = dt.create_targets_by_index(self.targets_transformed[l], out_length)
+                else:
+                    raise ValueError(f"Target for label not found in targets_transformed: {l} (label)!",
+                                     "Update file containing all moves!")
+
+            # transforming formatted data
+            if self.transform:
+                targets = self.transform(targets, grad=True)
+                byteboards = self.transform(byteboards, grad=True)
+
+            # detaching byteboards and labels
+            byteboards.clone().detach()
+            targets.clone().detach()
+            # adding the targets and the labels to the transformed data
+            self.transformed_labels.append(targets)
+            self.transformed_games.append(byteboards)
+
+            if idx % 1000 == 0:
+                print(f'Successfully formatted {idx} out of {len(self.data)} training cases!')
 
 
 def prepare_chess_data(path: str, rnn: bool):
