@@ -1,18 +1,13 @@
+#!/usr/bin/env python
 """
 The starting point of the CLI.
 The parameters that are used to configure essential variables of the client are registered here.
 After that some info is printed to STDOUT and lastly the game starts.
 """
 
-# importing libraries
-# import numpy as np
 import argparse
-import chess
-
-# importing own files
-import train_model
 import cli
-
+import chess
 
 URL: str
 FEN: str
@@ -75,37 +70,10 @@ def print_banner():
 
 
 def main():
-    """
-    Command Line User Interface
-    """
-
     print_banner()
+    cli.play_against_ai(FEN, UNICODE, ai_host=URL, ai_color=not COLOR)
 
-    while True:
-        print('1) Start AI client' + '\n' +
-              '2) Train AI locally' + '\n' +
-              '3) Initialize new AI model')
-        option = int(input('Pick an option 1-3: '))
-
-        if option in range(1, 4):
-            break
-        print(f'Specified option {option} is invalid!')
-
-    match option:
-        case 1:
-            # Starting the client
-            cli.play_against_ai(FEN, UNICODE, ai_host=URL, ai_color=not COLOR)
-        case 2:
-            # Starting the training process
-            train_model.train_chess_model()
-        case 3:
-            # Starting the initialization process
-            train_model.init_new_model()
-
-
-URL, FEN, COLOR, UNICODE = register_arguments()
 
 if __name__ == "__main__":
+    URL, FEN, COLOR, UNICODE = register_arguments()
     main()
-
-print("Goodbye")
