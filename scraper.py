@@ -3,7 +3,7 @@ import time
 import os
 import logging
 
-save_dir = r"Games"
+save_dir = r"./Games"
 os.makedirs(save_dir, exist_ok=True)
 
 # Chess.com returns HTML instead of JSON if useragent isn't Postman
@@ -85,7 +85,7 @@ def get_games_pgn(username: str) -> list[str]:
     return filtered_games
 
 
-def save_game(unix_time: int, user_name: str, save_number: int, game_pgn: str) -> None:
+def save_game(unix_time: int, user_name: str, save_number: int, user_save_dir: str, game_pgn: str) -> None:
     """
     Saves a string (PGN) to the Games directory in a file with the following format:
     "UNIXTIME-USERNAME-GAME#.pgn"
@@ -102,7 +102,7 @@ def save_game(unix_time: int, user_name: str, save_number: int, game_pgn: str) -
 
     try:
         save_file = f"{unix_time}-{user_name}-{save_number}.pgn"
-        file_path: str = os.path.join(save_dir, save_file)
+        file_path: str = os.path.join(user_save_dir, save_file)
         with open(file_path, "w") as file:
             file.write(game_pgn)
 
@@ -130,13 +130,19 @@ def process_games(player: str, start_time: int) -> int:
         return 1
 
     print(f"Saving {player}'s PGNs...")
-    for i, game in enumerate(games):
-        save_game(
-            unix_time=start_time,
-            user_name=player,
-            save_number=f"{i:05}",
-            game_pgn=game
-        )
+    user_save_dir = f"{save_dir}/{player}"
+    try:
+        os.makedirs(user_save_dir, exist_ok=True)
+        for i, game in enumerate(games):
+            save_game(
+                unix_time=start_time,
+                user_name=player,
+                save_number=f"{i:06}",
+                user_save_dir=user_save_dir,
+                game_pgn=game,
+            )
+    except OSError as error:
+        logging.error(f"An IO error occured while creating the {player}'s save directory!", exc_info=True)
 
     return 0
 
