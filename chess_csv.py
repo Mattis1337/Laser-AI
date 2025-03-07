@@ -53,7 +53,7 @@ def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]
         Iterator[tuple[str]]: A list that contains tuples of evenly distributed PGN files in the target directory
     """
     # gets all the paths to files that end with .pgn
-    pgn_file_paths: list[str] = glob.glob(os.path.join(directory, "*.pgn"))
+    pgn_file_paths: list[str] = glob.glob(os.path.join(directory, "**/*.pgn"), recursive=True)
 
     if not pgn_file_paths:
         raise FileNotFoundError(f"No PGN files found in {directory}.")
