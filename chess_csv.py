@@ -71,13 +71,13 @@ def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]
     return itertools.batched(pgn_file_paths, chunk_size)
 
 
-def convert_single_pgn_to_csv(pgn_path: str, retro=False) -> tuple[list, list]:
+def convert_single_pgn_to_csv(pgn_path: str, retro=True) -> tuple[list, list]:
     """
     Converts a PGN file's moves into board states mapped to the next move.
     Then it converts them into memory-efficient bitboards.
     Lastly, the data is saved in two csv data sets (IN RAM) representing white and black moves respectively.
     :param pgn_path: The PGN file to load
-    :param retro: use old formatting for csv
+    :param retro: use old formatting for csv (not compatible with recurrent nets)
     :return: Two lists of CSV data representing white and black board states/moves
     """
     white_data = []
