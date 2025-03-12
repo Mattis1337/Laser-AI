@@ -6,8 +6,6 @@ from typing import Iterator
 import itertools
 # async
 from multiprocessing import Process
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 # parsing data
 import pandas as pd
 import chess
@@ -193,7 +191,7 @@ def merge_multiple_files(file_paths: list[str], result_path: str, override_clone
                 os.remove(path)
 
 
-async def all_pgns_to_csv(
+def all_pgns_to_csv(
     pgn_file_paths: Iterator[tuple[str]],
     white_games_path: str,
     black_games_path: str,
@@ -219,8 +217,8 @@ async def all_pgns_to_csv(
         process = Process(target=pgns_to_csv, args=(
             chunk,
             # makes sure that no data is overriden because of race conditions
-            f"{white_games_path}-part{i}",
-            f"{black_games_path}-part{i}",
+            f"{white_games_path}.part{i}",
+            f"{black_games_path}.part{i}",
         ))
         process.start()
         processes.append(process)
@@ -229,24 +227,15 @@ async def all_pgns_to_csv(
     for process in processes:
         process.join()
 
-    # define preset for merging files on separate thread
-    async def run_merge(games_path: str):
-        await asyncio.to_thread(merge_multiple_files,
+    for games_path in (white_games_path, black_games_path):
+        # merge white CSVs
+        merge_multiple_files(
             glob.glob(f"{games_path}.part*"),
             games_path,
             not merge_old_csv,
             delete_csv_fragments,
         )
         print("[CSV] Merged CSV fragments for " + games_path)
-
-    # run IO tasks on separate threads
-    threads = [
-        run_merge(games_path=white_games_path),
-        run_merge(games_path=black_games_path),
-    ]
-
-    # exit the function when all data is saved
-    await asyncio.gather(*threads)
 
 
 def create_output(game_csv: str, save_path: str):
@@ -273,13 +262,13 @@ def main():
 
     # converts every move of the PGNs to bitboards
     # and saves the values to CSVs
-    asyncio.run(all_pgns_to_csv(
+    all_pgns_to_csv(
        pgn_file_paths=pgn_files,
        white_games_path=WHITE_GAMES_CSV,
        black_games_path=BLACK_GAMES_CSV,
        merge_old_csv=False,
        delete_csv_fragments=True,
-    ))
+    )
 
     # generates two csvs of moves the AI will be able to use
     # each move is unique, no duplicates
