@@ -107,9 +107,9 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
         # statistics ...
         running_loss += loss
         counter+=1
-        if (counter * dataloader.batch_size) <= 1_000_000:
+        if (counter * dataloader.batch_size) >= 1_000_000:
             current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * 10000):>7f}  [{current:>5d}/{size:>5d}]")
+            print(f"loss: {running_loss / (dataloader.batch_size * batch):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
             counter = 0
 
@@ -501,8 +501,7 @@ def train_chess_model() -> None:
                     dataset.__sample__()
                 train_rnn(dataset, model, criterion, optimizer, device)
             else:
-                print("skipping")
-                #train_cnn(train_dataloader, model, criterion, optimizer, device)
+                train_cnn(train_dataloader, model, criterion, optimizer, device)
         else:
             if epoch % same_sample_iters == 0 and epoch != 0:
                 # switching up the loaded samples

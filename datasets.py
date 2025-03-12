@@ -11,8 +11,7 @@ import torch
 from torch.utils.data import Dataset
 
 # Importing own files
-from chess_csv import WHITE_GAMES_CSV, BLACK_GAMES_CSV, WHITE_MOVES_CSV, BLACK_MOVES_CSV, WHITE_RNN_GAMES_CSV, \
-    BLACK_RNN_MOVES_CSV, BLACK_RNN_GAMES_CSV
+from chess_csv import WHITE_GAMES_CSV, BLACK_GAMES_CSV, WHITE_MOVES_CSV, BLACK_MOVES_CSV
 import chess_annotation
 from chess_annotation import bitboard_to_byteboard
 import data_transformations as dt
@@ -147,7 +146,7 @@ def init_chess_dataset(color: c.COLORS, rnn: bool) -> ChessDataset:
         raise ValueError(f"Variable color must be of type {c.COLORS} but is of type {type(color)}!")
 
     if rnn is True:
-        paths = [WHITE_RNN_GAMES_CSV, BLACK_RNN_GAMES_CSV]
+        paths = None
     else:
         paths = [WHITE_GAMES_CSV, BLACK_GAMES_CSV]
 
