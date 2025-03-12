@@ -15,11 +15,11 @@ import chess
 import chess_annotation as annotation
 
 # the directory containing chess game representations in PGN format
-PGN_DIR = r"Games"
+PGN_DIR = r"./Games"
 os.makedirs(PGN_DIR, exist_ok=True)
 
 # your local directory containing the CSV/ folder
-CSV_DIR = r"CSV"
+CSV_DIR = r"./CSV"
 os.makedirs(CSV_DIR, exist_ok=True)
 # the paths to save the training data to
 WHITE_GAMES_CSV: str = os.path.join(CSV_DIR, r"white_games.csv")
@@ -232,7 +232,7 @@ async def all_pgns_to_csv(
     # define preset for merging files on separate thread
     async def run_merge(games_path: str):
         await asyncio.to_thread(merge_multiple_files,
-            glob.glob(f"{games_path}-part*"),
+            glob.glob(f"{games_path}.part*"),
             games_path,
             not merge_old_csv,
             delete_csv_fragments,

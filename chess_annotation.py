@@ -116,7 +116,7 @@ def pgn_to_bitboards_snapshots(pgn: TextIO) -> tuple[list[list[int]], list[str],
     # loads game in
     try:
         game = chess.pgn.read_game(pgn)
-    except (OSError, IOError, FileNotFoundError) as error:
+    except OSError as error:
         print("PGN file couldn't be read! " + error)
         return states, moves
 
