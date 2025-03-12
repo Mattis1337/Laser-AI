@@ -90,6 +90,7 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
 
     size = len(dataloader.dataset)
     running_loss = 0.0
+    counter = 0
 
     for batch, data in enumerate(dataloader, 0):
         inputs, labels = data  # not adjusted for CUDA devices
@@ -105,10 +106,12 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
 
         # statistics ...
         running_loss += loss
-        if (batch+1) % 10000 == 0:
+        counter+=1
+        if (counter * dataloader.batch_size) <= 1_000_000:
             current = (batch + 1) * len(inputs)
             print(f"loss: {running_loss / (dataloader.batch_size * 10000):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
+            counter = 0
 
     print("Epoch done!")
 
@@ -498,7 +501,8 @@ def train_chess_model() -> None:
                     dataset.__sample__()
                 train_rnn(dataset, model, criterion, optimizer, device)
             else:
-                train_cnn(train_dataloader, model, criterion, optimizer, device)
+                print("skipping")
+                #train_cnn(train_dataloader, model, criterion, optimizer, device)
         else:
             if epoch % same_sample_iters == 0 and epoch != 0:
                 # switching up the loaded samples
@@ -507,7 +511,7 @@ def train_chess_model() -> None:
 
         if (epoch+1) % 1 == 0:
             # saving the model after every epoch
-            save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
+            #save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
             pass
 
     print(time.ctime())
