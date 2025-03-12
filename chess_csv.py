@@ -161,7 +161,7 @@ def pgns_to_csv(
     pgn_file_paths: tuple[list],
     white_games_path: str,
     black_games_path: str,
-    retro: bool = False,
+    retro: bool = True,
 ):
     """
     Converts the PGN files in the provided paths to bitboard and move pairs.
