@@ -71,7 +71,7 @@ def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]
     return itertools.batched(pgn_file_paths, chunk_size)
 
 
-def convert_single_pgn_to_csv(pgn_path: str, retro=True) -> tuple[list, list]:
+def convert_single_pgn_to_csv(pgn_path: str, retro: bool) -> tuple[list, list]:
     """
     Converts a PGN file's moves into board states mapped to the next move.
     Then it converts them into memory-efficient bitboards.
@@ -303,8 +303,8 @@ def main():
     # and saves the values to CSVs
     asyncio.run(all_pgns_to_csv(
        pgn_file_paths=pgn_files,
-        white_games_path=WHITE_RNN_GAMES_CSV,
-       black_games_path=BLACK_RNN_GAMES_CSV,
+       white_games_path=WHITE_GAMES_CSV,
+       black_games_path=BLACK_GAMES_CSV,
        merge_old_csv=False,
        delete_csv_fragments=True,
     ))
@@ -312,14 +312,14 @@ def main():
     # generates two csvs of moves the AI will be able to use
     # each move is unique, no duplicates
     white_outputs_process = Process(target=create_output, args=(
-        WHITE_RNN_GAMES_CSV,
-        WHITE_RNN_MOVES_CSV,
+        WHITE_GAMES_CSV,
+        WHITE_MOVES_CSV,
     ))
     white_outputs_process.start()
 
     black_outputs_process = Process(target=create_output, args=(
-        BLACK_RNN_GAMES_CSV,
-        BLACK_RNN_MOVES_CSV,
+        BLACK_GAMES_CSV,
+        BLACK_MOVES_CSV,
     ))
     black_outputs_process.start()
 
