@@ -272,20 +272,8 @@ def main():
 
     # generates two csvs of moves the AI will be able to use
     # each move is unique, no duplicates
-    white_outputs_process = Process(target=create_output, args=(
-        WHITE_GAMES_CSV,
-        WHITE_MOVES_CSV,
-    ))
-    white_outputs_process.start()
-
-    black_outputs_process = Process(target=create_output, args=(
-        BLACK_GAMES_CSV,
-        BLACK_MOVES_CSV,
-    ))
-    black_outputs_process.start()
-
-    white_outputs_process.join()
-    black_outputs_process.join()
+    create_output(game_csv=WHITE_GAMES_CSV, save_path=WHITE_MOVES_CSV)
+    create_output(game_csv=BLACK_GAMES_CSV, save_path=BLACK_MOVES_CSV)
 
 
 if __name__ == "__main__":
