@@ -1,26 +1,32 @@
 import ast
-import csv
 import random
-from random import shuffle
+import os
 
 import chess as c
 import pandas as pd
 import numpy as np
 import torch
+from pydantic.experimental.pipeline import transform
 
 from torch.utils.data import Dataset
 
 # Importing own files
 from chess_csv import WHITE_GAMES_CSV, BLACK_GAMES_CSV, WHITE_MOVES_CSV, BLACK_MOVES_CSV
-import chess_annotation
-from chess_annotation import bitboard_to_byteboard
 import data_transformations as dt
 
 
 class ChessDataset(Dataset):
-    def __init__(self, img_dir, color, rnn, transform=None):
+    def __init__(self, img_dir, color, rnn, transform=None, data=None, labels=None):
         # load the specified chess data from a csv fill
-        self.data, self.labels = prepare_chess_data(img_dir, rnn)
+        # check whether chunking the data is already prepared as in the case of chunking
+        try:
+            if data or labels is None:
+                self.data, self.labels = prepare_chess_data(img_dir, rnn)
+        except ValueError:
+            # if we get a ValueError params data and label contain a df whose real value is ambiguous
+            self.data = data.to_numpy()
+            self.labels = labels.to_numpy()
+        
         self.rnn = rnn
         self.color = color
         self.transform = transform
@@ -121,6 +127,12 @@ class ChessDataset(Dataset):
                 print(f'Successfully formatted {idx} out of {len(self.data)} training cases!')
 
 
+def get_chunked_dataset(path: str, color: c.COLORS, rnn: bool):
+    chunk_size = 10_000_000
+    for chunk_data, chunk_labels in zip(pd.read_csv(path, usecols=range(12), chunksize=chunk_size), pd.read_csv(path, usecols=[12], chunksize=chunk_size)):
+        yield ChessDataset(None, color, rnn, transform=dt.to_tensor, data=chunk_data, labels=chunk_labels)
+
+
 def prepare_chess_data(path: str, rnn: bool):
     """
     This function will convert a csv file into a np.array()
@@ -178,3 +190,16 @@ def get_output_length(color: c.COLORS) -> int:
         df = pd.read_csv(BLACK_MOVES_CSV)
 
     return df.__len__()
+
+
+def file_exceeds_size(path: str, size: int) -> bool:
+    """
+    Check whether a given file exceeds a certain size
+    Args:
+        path: path to the file
+        size: max size of the file in bytes
+
+    Returns: True if file greater than size, else False
+
+    """
+    return os.path.getsize(path) > size

@@ -63,6 +63,20 @@ def get_pgn_paths(directory: str, chunk_amount: int = 1) -> Iterator[tuple[str]]
     return itertools.batched(pgn_file_paths, chunk_size)
 
 
+def get_csv_paths(color: chess.COLORS) -> list[str]:
+    """
+    Returns the path to the csv files of games for a specified color
+    Args:
+        color: the color of the games wanted
+
+    Returns: a list of 2 paths
+
+    """
+    if color is True:
+        return [WHITE_GAMES_CSV, WHITE_MOVES_CSV]
+    return [BLACK_GAMES_CSV, BLACK_MOVES_CSV]
+
+
 def convert_single_pgn_to_csv(pgn_path: str) -> tuple[list, list]:
     """
     Converts a PGN file's moves into board states mapped to the next move.

@@ -13,6 +13,8 @@ import chess_annotation
 import datasets
 import data_transformations as dt
 import models
+from chess_csv import get_csv_paths
+from datasets import get_chunked_dataset, file_exceeds_size
 
 OUTPUTS_WHITE: list[str] = dt.targets_to_numericals(c.WHITE)
 OUTPUTS_BLACK: list[str] = dt.targets_to_numericals(c.BLACK)
@@ -108,8 +110,8 @@ def train_cnn(dataloader, model, criterion, optimizer, device):
         running_loss += loss
         counter+=1
         if (counter * dataloader.batch_size) >= 1_000_000:
-            current = (batch + 1) * len(inputs)
-            print(f"loss: {running_loss / (dataloader.batch_size * batch):>7f}  [{current:>5d}/{size:>5d}]")
+            current = (batch + 1) * dataloader.batch_size
+            print(f"loss: {running_loss / (dataloader.batch_size * counter):>7f}  [{current:>5d}/{size:>5d}]")
             running_loss = 0.0
             counter = 0
 
@@ -473,9 +475,14 @@ def train_chess_model() -> None:
             # changing memory format for RNN models
             model.to(memory_format=torch.channels_last)
         else:
-            # initializing the dataset/dataloader for CNN models
-            dataset = datasets.init_chess_dataset(color, False)
-            train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
+            games_path, _ = get_csv_paths(color)
+            max_file_size = 2 * (10 ** 9)  # max file size is 2GB
+            if not file_exceeds_size(games_path, max_file_size):
+                # initializing the dataset/dataloader for CNN models
+                dataset = datasets.init_chess_dataset(color, False)
+                train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
+            else:
+                dataset = None
     else:
         criterion = nn.CrossEntropyLoss()
         # initializing RNN dataset
@@ -491,27 +498,41 @@ def train_chess_model() -> None:
 
     print(time.ctime())
 
-    # Train the network for the set epoch size
-    for epoch in range(epochs):
-        print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
-        if hasattr(model, 'recurrent'):
-            if model.recurrent is True:
+    # checking whether data needs to be chunked
+    if dataset is None:
+        for epoch, dataset in enumerate(get_chunked_dataset(games_path, color, False)):
+            print(f"Epoch {epoch + 1} (total {last_epoch + epoch + 1})\n-------------------------------")
+            train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
+            train_cnn(train_dataloader, model, criterion, optimizer, device)
+
+            if (epoch+1) % 1 == 0:
+                # saving the model after every epoch
+                save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
+                pass
+            if epoch+1 > epochs:
+                break
+    else:
+        # Train the network for the set epoch size
+        for epoch in range(epochs):
+            print(f"Epoch {epoch+1} (total {last_epoch+epoch+1})\n-------------------------------")
+            if hasattr(model, 'recurrent'):
+                if model.recurrent is True:
+                    if epoch % same_sample_iters == 0 and epoch != 0:
+                        # switching up the loaded samples
+                        dataset.__sample__()
+                    train_rnn(dataset, model, criterion, optimizer, device)
+                else:
+                    train_cnn(train_dataloader, model, criterion, optimizer, device)
+            else:
                 if epoch % same_sample_iters == 0 and epoch != 0:
                     # switching up the loaded samples
                     dataset.__sample__()
-                train_rnn(dataset, model, criterion, optimizer, device)
-            else:
-                train_cnn(train_dataloader, model, criterion, optimizer, device)
-        else:
-            if epoch % same_sample_iters == 0 and epoch != 0:
-                # switching up the loaded samples
-                dataset.__sample__()
-            train_lstm(dataset, criterion, model, optimizer, device)
+                train_lstm(dataset, criterion, model, optimizer, device)
 
-        if (epoch+1) % 1 == 0:
-            # saving the model after every epoch
-            #save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
-            pass
+            if (epoch+1) % 1 == 0:
+                # saving the model after every epoch
+                save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
+                pass
 
     print(time.ctime())
 
