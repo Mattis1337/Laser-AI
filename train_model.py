@@ -503,7 +503,7 @@ def train_chess_model() -> None:
         total_epochs = 0
         while True:
             for epoch, dataset in enumerate(get_chunked_dataset(games_path, color, False)):
-                print(f"Epoch {epoch + 1} (total {last_epoch + epoch + 1})\n-------------------------------")
+                print(f"Epoch {total_epochs + 1} (total {last_epoch + epoch + 1})\n-------------------------------")
                 train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
                 train_cnn(train_dataloader, model, criterion, optimizer, device)
                 total_epochs += 1
