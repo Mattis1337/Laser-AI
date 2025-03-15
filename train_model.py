@@ -500,16 +500,21 @@ def train_chess_model() -> None:
 
     # checking whether data needs to be chunked
     if dataset is None:
-        for epoch, dataset in enumerate(get_chunked_dataset(games_path, color, False)):
-            print(f"Epoch {epoch + 1} (total {last_epoch + epoch + 1})\n-------------------------------")
-            train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
-            train_cnn(train_dataloader, model, criterion, optimizer, device)
+        total_epochs = 0
+        while True:
+            for epoch, dataset in enumerate(get_chunked_dataset(games_path, color, False)):
+                print(f"Epoch {epoch + 1} (total {last_epoch + epoch + 1})\n-------------------------------")
+                train_dataloader = DataLoader(dataset, batch_size=2048, shuffle=True, num_workers=8)
+                train_cnn(train_dataloader, model, criterion, optimizer, device)
+                total_epochs += 1
 
-            if (epoch+1) % 1 == 0:
-                # saving the model after every epoch
-                save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
-                pass
-            if epoch+1 > epochs:
+                if (epoch+1) % 1 == 0:
+                    # saving the model after every epoch
+                    save_trained_model(color, model, last_epoch + epoch + 1, optimizer, path)  # + epoch + 1
+                    pass
+                if total_epochs == epochs:
+                    break
+            if total_epochs == epochs:
                 break
     else:
         # Train the network for the set epoch size
