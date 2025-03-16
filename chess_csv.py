@@ -260,8 +260,14 @@ def create_output(game_csv: str, save_path: str):
     :param game_csv: A CSV file containing mappings of board states and moves, created by convert_png_to_csv()
     :param save_path: The path where the new CSV file should be saved at
     """
-    games = pd.read_csv(game_csv, on_bad_lines='warn')
-    moves = games.iloc[:, -1].drop_duplicates()  # gets the last column and removes duplicate moves
+    # Load old file of all moves
+    moves = pd.read_csv(save_path, on_bad_lines='warn')
+    # load data in chunks to avoid memory issues
+    for chunk in pd.read_csv(game_csv, on_bad_lines='warn', chunksize=10_000_000):
+        moves.append(chunk.iloc[:, -1].drop_duplicates())  # gets the last column and removes duplicate moves
+    # after appending all unique moves from each chunk drop all duplicates to have each
+    # move only once, original order of moves will be kept and new moves will just be appended
+    moves.drop_duplicates()
     moves.to_csv(save_path, header=False, index=False)
     print(f"[CSV] Created outputs successfully in {save_path}")
 
