@@ -264,7 +264,7 @@ def create_output(game_csv: str, save_path: str):
     moves = pd.read_csv(save_path, on_bad_lines='warn')
     # load data in chunks to avoid memory issues
     for chunk in pd.read_csv(game_csv, on_bad_lines='warn', chunksize=10_000_000):
-        moves.append(chunk.iloc[:, -1].drop_duplicates())  # gets the last column and removes duplicate moves
+        pd.concat([moves, chunk.iloc[:, -1].drop_duplicates()])  # gets the last column and removes duplicate moves
     # after appending all unique moves from each chunk drop all duplicates to have each
     # move only once, original order of moves will be kept and new moves will just be appended
     moves.drop_duplicates()
