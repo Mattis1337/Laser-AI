@@ -439,9 +439,9 @@ def train_chess_model() -> None:
         if model.recurrent is True:
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
         else:
-            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate*0.01, momentum=0.9)
+            optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     else:
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate*0.1)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     # checking if the output size has changed in between learning
     if old_outputs != datasets.get_output_length(color):
         # change the dimension of the output
